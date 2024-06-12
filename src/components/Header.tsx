@@ -1,15 +1,30 @@
+// src/components/Header.tsx
+
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useStytch, useStytchSession, useStytchUser } from "@stytch/nextjs";
-import { useAccount } from "@/src/components/AccountContext";
+import { useStytch } from "@stytch/nextjs";
+import { useAccount } from "../../src/components/AccountContext";
 
 const Header = () => {
   const stytch = useStytch();
-  const { user } = useStytchUser();
-  const { session } = useStytchSession();
-  const { currentAccount, toggleAccount } = useAccount();
+  const { tenants, currentTenant, handleTenantChange } = useAccount();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (tenants.length > 0) {
+      setLoading(false);
+    }
+    console.log("TENANTS in useEffect: ", tenants); // Add this log to verify tenants in useEffect
+  }, [tenants]);
+
+  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    handleTenantChange(event.target.value);
+  };
+
+  console.log("TENANTS: ", tenants); // Ensure this log is before the return
 
   return (
     <header>
@@ -22,16 +37,27 @@ const Header = () => {
           priority={true}
         />
       </Link>
-      {session ? (
+      {stytch.session ? (
         <div className="link-container">
-          <select
-            className="account-switcher"
-            onChange={toggleAccount}
-            value={currentAccount ? "current" : "savings"}
-          >
-            <option value="current">Current Account</option>
-            <option value="savings">Savings Account</option>
-          </select>
+          {loading ? (
+            <p>Loading tenants...</p>
+          ) : (
+            <select
+              className="account-switcher"
+              onChange={handleChange}
+              value={currentTenant}
+            >
+              {tenants.length === 0 ? (
+                <option value="">No tenants available</option>
+              ) : (
+                tenants.map((tenant: { key: string; name: string }) => (
+                  <option key={tenant.key} value={tenant.key}>
+                    {tenant.name}
+                  </option>
+                ))
+              )}
+            </select>
+          )}
           <button className="primary" onClick={() => stytch.session.revoke()}>
             Log out
           </button>

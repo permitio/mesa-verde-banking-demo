@@ -1,6 +1,8 @@
+// src/components/Profile.tsx
+
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useStytch, useStytchSession, useStytchUser } from "@stytch/nextjs";
 import { useAccount } from "@/src/components/AccountContext";
 import { Permit } from "permitio";
@@ -30,14 +32,111 @@ type SavingsAccountData = {
 
 type AccountData = CurrentAccountData | SavingsAccountData;
 
+const mockData = {
+  "current-account-a": {
+    balance: "£5,000.00",
+    transactions: [
+      {
+        id: 1,
+        date: "2024-06-01",
+        description: "Grocery Store",
+        amount: "-£50.00",
+      },
+      {
+        id: 2,
+        date: "2024-06-03",
+        description: "Salary",
+        amount: "+£3,000.00",
+      },
+      {
+        id: 3,
+        date: "2024-06-05",
+        description: "Electricity Bill",
+        amount: "-£100.00",
+      },
+      { id: 4, date: "2024-06-07", description: "Rent", amount: "-£1,500.00" },
+      {
+        id: 5,
+        date: "2024-06-09",
+        description: "Coffee Shop",
+        amount: "-£5.00",
+      },
+      {
+        id: 6,
+        date: "2024-06-10",
+        description: "Subscription",
+        amount: "-£15.00",
+      },
+    ],
+  },
+  "current-account-b": {
+    balance: "£3,000.00",
+    transactions: [
+      {
+        id: 1,
+        date: "2024-06-01",
+        description: "Grocery Store",
+        amount: "-£30.00",
+      },
+      {
+        id: 2,
+        date: "2024-06-03",
+        description: "Salary",
+        amount: "+£2,000.00",
+      },
+      {
+        id: 3,
+        date: "2024-06-05",
+        description: "Electricity Bill",
+        amount: "-£80.00",
+      },
+      { id: 4, date: "2024-06-07", description: "Rent", amount: "-£1,200.00" },
+      {
+        id: 5,
+        date: "2024-06-09",
+        description: "Coffee Shop",
+        amount: "-£10.00",
+      },
+      {
+        id: 6,
+        date: "2024-06-10",
+        description: "Subscription",
+        amount: "-£20.00",
+      },
+    ],
+  },
+  "saving-account-a": {
+    balance: "£10,000.00",
+    interestRate: "3.6%",
+    transactions: [
+      { id: 1, date: "2024-06-01", description: "Interest", amount: "+£50.00" },
+      {
+        id: 2,
+        date: "2024-06-03",
+        description: "Deposit",
+        amount: "+£5,000.00",
+      },
+      {
+        id: 3,
+        date: "2024-06-05",
+        description: "Deposit",
+        amount: "+£3,000.00",
+      },
+      { id: 4, date: "2024-06-07", description: "Interest", amount: "+£30.00" },
+    ],
+  },
+};
+
 const Profile: React.FC = () => {
   const stytch = useStytch();
   const { user } = useStytchUser();
   const { session } = useStytchSession();
-  const { currentAccount } = useAccount();
+  const { currentTenant } = useAccount();
   const [showWireTransfer, setShowWireTransfer] = useState(false);
   const [showInviteUser, setShowInviteUser] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>("Admin");
+  const [accountData, setAccountData] = useState<AccountData | null>(null);
+  const [permitted, setPermitted] = useState<boolean | null>(null);
 
   const users = [
     "filip@permit.io",
@@ -78,67 +177,37 @@ const Profile: React.FC = () => {
     setSelectedRole(event.target.value);
   };
 
-  const mockDataCurrent: CurrentAccountData = {
-    balance: "£5,000.00",
-    transactions: [
-      {
-        id: 1,
-        date: "2024-06-01",
-        description: "Grocery Store",
-        amount: "-£50.00",
-      },
-      {
-        id: 2,
-        date: "2024-06-03",
-        description: "Salary",
-        amount: "+£3,000.00",
-      },
-      {
-        id: 3,
-        date: "2024-06-05",
-        description: "Electricity Bill",
-        amount: "-£100.00",
-      },
-      { id: 4, date: "2024-06-07", description: "Rent", amount: "-£1,500.00" },
-      {
-        id: 5,
-        date: "2024-06-09",
-        description: "Coffee Shop",
-        amount: "-£5.00",
-      },
-      {
-        id: 6,
-        date: "2024-06-10",
-        description: "Subscription",
-        amount: "-£15.00",
-      },
-    ],
-  };
+  useEffect(() => {
+    console.log("Current Tenant: ", currentTenant);
+    if (currentTenant) {
+      const data = mockData[currentTenant as keyof typeof mockData];
+      console.log("Fetched Account Data: ", data);
+      setAccountData(data);
+    }
+  }, [currentTenant]);
 
-  const mockDataSavings: SavingsAccountData = {
-    balance: "£10,000.00",
-    interestRate: "3.6%",
-    transactions: [
-      { id: 1, date: "2024-06-01", description: "Interest", amount: "+£50.00" },
-      {
-        id: 2,
-        date: "2024-06-03",
-        description: "Deposit",
-        amount: "+£5,000.00",
-      },
-      {
-        id: 3,
-        date: "2024-06-05",
-        description: "Deposit",
-        amount: "+£3,000.00",
-      },
-      { id: 4, date: "2024-06-07", description: "Interest", amount: "+£30.00" },
-    ],
-  };
+  useEffect(() => {
+    const checkPermissions = async () => {
+      if (user && currentTenant) {
+        const user_id = session?.user_id;
+        const isPermitted = await permit.check(user_id, "view-all", {
+          type: "Account",
+          tenant: currentTenant,
+        });
 
-  const accountData: AccountData = currentAccount
-    ? mockDataCurrent
-    : mockDataSavings;
+        console.log(
+          `User ${user_id} is ${isPermitted ? "" : "NOT "}PERMITTED to view all.`,
+        );
+        setPermitted(isPermitted);
+      }
+    };
+
+    checkPermissions();
+  }, [user, currentTenant]);
+
+  if (permitted === null || !accountData) {
+    return <div>Loading...</div>;
+  }
 
   // Type guard to check if accountData is SavingsAccountData
   const isSavingsAccountData = (
@@ -146,6 +215,10 @@ const Profile: React.FC = () => {
   ): data is SavingsAccountData => {
     return "interestRate" in data;
   };
+
+  const transactionsToDisplay = permitted
+    ? accountData.transactions
+    : accountData.transactions.slice(0, 3);
 
   return (
     <div className="profile">
@@ -155,21 +228,26 @@ const Profile: React.FC = () => {
       </pre>
 
       <div className="dashboard">
-        <h2>{currentAccount ? "Current Account" : "Savings Account"}</h2>
+        <h2>
+          {currentTenant === "saving-account-a"
+            ? "Savings Account"
+            : "Current Account"}
+        </h2>
         <div className="balance">
           <h3>Balance</h3>
-          <p>{accountData.balance}</p>
-          {!currentAccount && isSavingsAccountData(accountData) && (
-            <div className="interest-rate">
-              <h4>Interest Rate</h4>
-              <p>{accountData.interestRate}</p>
-            </div>
-          )}
+          <p>{permitted ? accountData.balance : "N/A"}</p>
+          {currentTenant === "saving-account-a" &&
+            isSavingsAccountData(accountData) && (
+              <div className="interest-rate">
+                <h4>Interest Rate</h4>
+                <p>{accountData.interestRate}</p>
+              </div>
+            )}
         </div>
         <div className="transactions">
           <h3>Latest Transactions</h3>
           <ul>
-            {accountData.transactions.map((transaction) => (
+            {transactionsToDisplay.map((transaction) => (
               <li key={transaction.id}>
                 <span className="date">{transaction.date}</span>
                 <span className="description">{transaction.description}</span>
@@ -178,48 +256,61 @@ const Profile: React.FC = () => {
             ))}
           </ul>
         </div>
-        <div className="actions">
-          {currentAccount ? (
-            <>
-              <button
-                className="action-button"
-                onClick={() => alert("Add Money Clicked")}
-              >
-                Add Money
-              </button>
-              <button
-                className="action-button"
-                onClick={() => alert("Exchange Money Clicked")}
-              >
-                Exchange Money
-              </button>
-              <button
-                className="action-button"
-                onClick={handleWireTransferClick}
-              >
-                Send Wire Transfer
-              </button>
-              <button className="action-button" onClick={handleInviteUserClick}>
-                Invite User
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                className="action-button"
-                onClick={() => alert("Add Money Clicked")}
-              >
-                Add Money
-              </button>
-              <button
-                className="action-button"
-                onClick={() => alert("Withdraw Money Clicked")}
-              >
-                Withdraw Money
-              </button>
-            </>
-          )}
-        </div>
+        {!permitted && (
+          <div className="limited-user-message">
+            <p>
+              You are a limited user therefore you cannot see the account
+              balance nor the whole transaction history.
+            </p>
+          </div>
+        )}
+        {permitted && (
+          <div className="actions">
+            {currentTenant !== "saving-account-a" ? (
+              <>
+                <button
+                  className="action-button"
+                  onClick={() => alert("Add Money Clicked")}
+                >
+                  Add Money
+                </button>
+                <button
+                  className="action-button"
+                  onClick={() => alert("Exchange Money Clicked")}
+                >
+                  Exchange Money
+                </button>
+                <button
+                  className="action-button"
+                  onClick={handleWireTransferClick}
+                >
+                  Send Wire Transfer
+                </button>
+                <button
+                  className="action-button"
+                  onClick={handleInviteUserClick}
+                >
+                  Invite User
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="action-button"
+                  onClick={() => alert("Add Money Clicked")}
+                >
+                  Add Money
+                </button>
+                <button
+                  className="action-button"
+                  onClick={() => alert("Withdraw Money Clicked")}
+                >
+                  Withdraw Money
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {showWireTransfer && (
@@ -417,6 +508,12 @@ const Profile: React.FC = () => {
         }
 
         .interest-rate {
+          margin-top: 20px;
+        }
+
+        .limited-user-message {
+          color: red;
+          font-weight: bold;
           margin-top: 20px;
         }
       `}</style>
