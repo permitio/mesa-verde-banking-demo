@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@permitio/permit-js": "^0.4.4",
     "@stytch/nextjs": "^19.0.0",
     "@stytch/vanilla-js": "^4.11.2",
     "@types/node": "20.11.24",

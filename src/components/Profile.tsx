@@ -1,10 +1,10 @@
-// src/components/Profile.tsx
-
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { useStytch, useStytchSession, useStytchUser } from "@stytch/nextjs";
 import { useAccount } from "@/src/components/AccountContext";
+import RequestAccess from "./RequestAccess";
+import UserManagement from "./UserManagement";
 import { Permit } from "permitio";
 
 const permit = new Permit({
@@ -134,9 +134,16 @@ const Profile: React.FC = () => {
   const { currentTenant } = useAccount();
   const [showWireTransfer, setShowWireTransfer] = useState(false);
   const [showInviteUser, setShowInviteUser] = useState(false);
+  const [showReviewRequests, setShowReviewRequests] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>("Admin");
   const [accountData, setAccountData] = useState<AccountData | null>(null);
   const [permitted, setPermitted] = useState<boolean | null>(null);
+  const [wireTransferPermitted, setWireTransferPermitted] = useState<
+    boolean | null
+  >(null);
+  const [reviewRequestsPermitted, setReviewRequestsPermitted] = useState<
+    boolean | null
+  >(null);
 
   const users = [
     "filip@permit.io",
@@ -157,12 +164,25 @@ const Profile: React.FC = () => {
     },
   ];
 
-  const handleWireTransferClick = () => {
+  const handleWireTransferClick = async () => {
+    if (user && currentTenant) {
+      const id = user.user_id;
+      const isPermitted = await permit.check(id, "send", {
+        type: "Wire_Transfer",
+        tenant: currentTenant,
+      });
+
+      console.log(
+        `User ${id} is ${isPermitted ? "" : "NOT "}PERMITTED to send wire transfer.`,
+      );
+      setWireTransferPermitted(isPermitted);
+    }
     setShowWireTransfer(true);
   };
 
   const handleCloseWireTransfer = () => {
     setShowWireTransfer(false);
+    setWireTransferPermitted(null);
   };
 
   const handleInviteUserClick = () => {
@@ -177,6 +197,14 @@ const Profile: React.FC = () => {
     setSelectedRole(event.target.value);
   };
 
+  const handleReviewRequestsClick = () => {
+    setShowReviewRequests(true);
+  };
+
+  const handleCloseReviewRequests = () => {
+    setShowReviewRequests(false);
+  };
+
   useEffect(() => {
     console.log("Current Tenant: ", currentTenant);
     if (currentTenant) {
@@ -189,16 +217,25 @@ const Profile: React.FC = () => {
   useEffect(() => {
     const checkPermissions = async () => {
       if (user && currentTenant) {
-        const user_id = session?.user_id;
-        const isPermitted = await permit.check(user_id, "view-all", {
+        const id = user.user_id;
+        const isPermitted = await permit.check(id, "view-all", {
           type: "Account",
           tenant: currentTenant,
         });
 
         console.log(
-          `User ${user_id} is ${isPermitted ? "" : "NOT "}PERMITTED to view all.`,
+          `User ${id} is ${isPermitted ? "" : "NOT "}PERMITTED to view all.`,
         );
         setPermitted(isPermitted);
+
+        const canReviewRequests = await permit.check(id, "review-requests", {
+          type: "Wire_Transfer",
+          tenant: "current-account-b",
+        });
+        console.log(
+          `User ${id} is ${canReviewRequests ? "" : "NOT "}PERMITTED to review wire transfer requests.`,
+        );
+        setReviewRequestsPermitted(canReviewRequests);
       }
     };
 
@@ -209,7 +246,6 @@ const Profile: React.FC = () => {
     return <div>Loading...</div>;
   }
 
-  // Type guard to check if accountData is SavingsAccountData
   const isSavingsAccountData = (
     data: AccountData,
   ): data is SavingsAccountData => {
@@ -224,6 +260,7 @@ const Profile: React.FC = () => {
     <div className="profile">
       <h2>User object</h2>
       <pre className="code-block">
+        <code>{JSON.stringify(user, null, 2)}</code>
         <code>{JSON.stringify(session, null, 2)}</code>
       </pre>
 
@@ -233,6 +270,11 @@ const Profile: React.FC = () => {
             ? "Savings Account"
             : "Current Account"}
         </h2>
+        <div className="user-info">
+          <p>
+            Currently logged in as: {user?.emails[0].email ?? "Unknown User"}
+          </p>
+        </div>
         <div className="balance">
           <h3>Balance</h3>
           <p>{permitted ? accountData.balance : "N/A"}</p>
@@ -264,53 +306,22 @@ const Profile: React.FC = () => {
             </p>
           </div>
         )}
-        {permitted && (
-          <div className="actions">
-            {currentTenant !== "saving-account-a" ? (
-              <>
-                <button
-                  className="action-button"
-                  onClick={() => alert("Add Money Clicked")}
-                >
-                  Add Money
-                </button>
-                <button
-                  className="action-button"
-                  onClick={() => alert("Exchange Money Clicked")}
-                >
-                  Exchange Money
-                </button>
-                <button
-                  className="action-button"
-                  onClick={handleWireTransferClick}
-                >
-                  Send Wire Transfer
-                </button>
-                <button
-                  className="action-button"
-                  onClick={handleInviteUserClick}
-                >
-                  Invite User
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  className="action-button"
-                  onClick={() => alert("Add Money Clicked")}
-                >
-                  Add Money
-                </button>
-                <button
-                  className="action-button"
-                  onClick={() => alert("Withdraw Money Clicked")}
-                >
-                  Withdraw Money
-                </button>
-              </>
-            )}
-          </div>
-        )}
+        <div className="actions">
+          <button className="action-button" onClick={handleWireTransferClick}>
+            Send Wire Transfer
+          </button>
+          <button className="action-button" onClick={handleInviteUserClick}>
+            Invite User
+          </button>
+          {reviewRequestsPermitted && (
+            <button
+              className="action-button"
+              onClick={handleReviewRequestsClick}
+            >
+              Review Wire Transfer Requests
+            </button>
+          )}
+        </div>
       </div>
 
       {showWireTransfer && (
@@ -320,24 +331,39 @@ const Profile: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <h3>Send Wire Transfer</h3>
-            <select className="dropdown">
-              {users.map((user) => (
-                <option key={user} value={user}>
-                  {user}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              placeholder="Amount"
-              className="amount-input"
-            />
-            <button className="action-button" onClick={handleCloseWireTransfer}>
-              Send
-            </button>
-            <button className="action-button" onClick={handleCloseWireTransfer}>
-              Cancel Wire Transfer
-            </button>
+            {wireTransferPermitted === false ? (
+              <RequestAccess
+                userJwt={process.env.NEXT_PUBLIC_JWT}
+                currentTenant={currentTenant}
+              />
+            ) : (
+              <>
+                <select className="dropdown">
+                  {users.map((user) => (
+                    <option key={user} value={user}>
+                      {user}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  placeholder="Amount"
+                  className="amount-input"
+                />
+                <button
+                  className="action-button"
+                  onClick={handleCloseWireTransfer}
+                >
+                  Send
+                </button>
+                <button
+                  className="action-button"
+                  onClick={handleCloseWireTransfer}
+                >
+                  Cancel Wire Transfer
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -382,6 +408,29 @@ const Profile: React.FC = () => {
             </button>
             <button className="action-button" onClick={handleCloseInviteUser}>
               Cancel Invite
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showReviewRequests && (
+        <div
+          className="review-requests-popup"
+          onClick={handleCloseReviewRequests}
+        >
+          <div
+            className="review-requests-content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <UserManagement
+              userJwt={process.env.NEXT_PUBLIC_JWT}
+              currentTenant={currentTenant}
+            />
+            <button
+              className="action-button"
+              onClick={handleCloseReviewRequests}
+            >
+              Close
             </button>
           </div>
         </div>
@@ -435,7 +484,8 @@ const Profile: React.FC = () => {
         }
 
         .wire-transfer-popup,
-        .invite-user-popup {
+        .invite-user-popup,
+        .review-requests-popup {
           position: fixed;
           top: 0;
           left: 0;
@@ -448,12 +498,14 @@ const Profile: React.FC = () => {
         }
 
         .wire-transfer-content,
-        .invite-user-content {
+        .invite-user-content,
+        .review-requests-content {
           background-color: #fff;
           padding: 60px;
           border-radius: 8px;
           text-align: center;
           width: 500px;
+          height: 800px;
         }
 
         .dropdown {
@@ -515,6 +567,10 @@ const Profile: React.FC = () => {
           color: red;
           font-weight: bold;
           margin-top: 20px;
+        }
+
+        .user-info {
+          margin-bottom: 20px;
         }
       `}</style>
     </div>
