@@ -9,7 +9,8 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { fetchTenants } from "../../src/api/FetchTenants";
+import { fetchTenantsForUser } from "../../src/api/FetchTenants";
+import { useStytchUser } from "@stytch/nextjs";
 
 type Tenant = {
   id: string;
@@ -34,24 +35,26 @@ export const useAccount = () => {
 };
 
 export const AccountProvider = ({ children }: { children: ReactNode }) => {
+  const { user } = useStytchUser();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [currentTenant, setCurrentTenant] = useState<string>("");
 
   useEffect(() => {
     const getTenants = async () => {
       try {
-        const fetchedTenants = await fetchTenants();
-        console.log("Fetched Tenants: ", fetchedTenants);
-        setTenants(fetchedTenants);
-        if (fetchedTenants.length > 0) {
-          setCurrentTenant(fetchedTenants[0].key); // Use tenant key
+        if (user) {
+          const fetchedTenants = await fetchTenantsForUser(user.user_id);
+          setTenants(fetchedTenants);
+          if (fetchedTenants.length > 0) {
+            setCurrentTenant(fetchedTenants[0].key); // Use tenant key
+          }
         }
       } catch (error) {
         console.error("Failed to fetch tenants", error);
       }
     };
     getTenants();
-  }, []);
+  }, [user]);
 
   const handleTenantChange = (tenantKey: string) => {
     setCurrentTenant(tenantKey);

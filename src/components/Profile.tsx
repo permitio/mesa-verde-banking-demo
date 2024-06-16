@@ -6,6 +6,20 @@ import { useAccount } from "@/src/components/AccountContext";
 import RequestAccess from "./RequestAccess";
 import UserManagement from "./UserManagement";
 import { Permit } from "permitio";
+import {
+  Button,
+  Select,
+  Spin,
+  Modal,
+  Tooltip,
+  List,
+  Typography,
+  Input,
+} from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
+
+const { Option } = Select;
+const { Title, Paragraph } = Typography;
 
 const permit = new Permit({
   token: process.env.NEXT_PUBLIC_PERMIT_API_KEY,
@@ -135,6 +149,10 @@ const Profile: React.FC = () => {
   const [showWireTransfer, setShowWireTransfer] = useState(false);
   const [showInviteUser, setShowInviteUser] = useState(false);
   const [showReviewRequests, setShowReviewRequests] = useState(false);
+  const [showRestrictedAccessModal, setShowRestrictedAccessModal] =
+    useState(false);
+  const [showRequestAccessModal, setShowRequestAccessModal] = useState(false);
+  const [showOverAmountModal, setShowOverAmountModal] = useState(false); // New state for over amount modal
   const [selectedRole, setSelectedRole] = useState<string>("Admin");
   const [accountData, setAccountData] = useState<AccountData | null>(null);
   const [permitted, setPermitted] = useState<boolean | null>(null);
@@ -144,6 +162,21 @@ const Profile: React.FC = () => {
   const [reviewRequestsPermitted, setReviewRequestsPermitted] = useState<
     boolean | null
   >(null);
+  const [transferAmount, setTransferAmount] = useState<string>(""); // New state for transfer amount
+
+  function getCookies(): Record<string, string> {
+    const pairs = document.cookie.split(";");
+    const cookies: Record<string, string> = {};
+
+    for (let i = 0; i < pairs.length; i++) {
+      const pair = pairs[i].split("=");
+      cookies[(pair[0] + "").trim()] = decodeURIComponent(
+        pair.slice(1).join("="),
+      );
+    }
+
+    return cookies;
+  }
 
   const users = [
     "filip@permit.io",
@@ -167,6 +200,22 @@ const Profile: React.FC = () => {
   const handleWireTransferClick = async () => {
     if (user && currentTenant) {
       const id = user.user_id;
+      const amount = parseFloat(transferAmount);
+
+      // Check if the amount is over 10000
+      if (amount > 10000) {
+        const isPermitted = await permit.check(id, "send", {
+          type: "Wire_Transfer",
+          attributes: { amount: amount },
+          tenant: currentTenant,
+        });
+
+        if (!isPermitted) {
+          setShowOverAmountModal(true);
+          return;
+        }
+      }
+
       const isPermitted = await permit.check(id, "send", {
         type: "Wire_Transfer",
         tenant: currentTenant,
@@ -193,8 +242,8 @@ const Profile: React.FC = () => {
     setShowInviteUser(false);
   };
 
-  const handleRoleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedRole(event.target.value);
+  const handleRoleChange = (value: string) => {
+    setSelectedRole(value);
   };
 
   const handleReviewRequestsClick = () => {
@@ -205,11 +254,26 @@ const Profile: React.FC = () => {
     setShowReviewRequests(false);
   };
 
+  const handleRequestAccessClick = () => {
+    setShowRestrictedAccessModal(false);
+    setShowRequestAccessModal(true);
+  };
+
+  const handleCloseRestrictedAccess = () => {
+    setShowRestrictedAccessModal(false);
+  };
+
+  const handleCloseRequestAccess = () => {
+    setShowRequestAccessModal(false);
+  };
+
+  const handleCloseOverAmountModal = () => {
+    setShowOverAmountModal(false);
+  };
+
   useEffect(() => {
-    console.log("Current Tenant: ", currentTenant);
     if (currentTenant) {
       const data = mockData[currentTenant as keyof typeof mockData];
-      console.log("Fetched Account Data: ", data);
       setAccountData(data);
     }
   }, [currentTenant]);
@@ -242,8 +306,14 @@ const Profile: React.FC = () => {
     checkPermissions();
   }, [user, currentTenant]);
 
+  useEffect(() => {
+    if (permitted === false) {
+      setShowRestrictedAccessModal(true);
+    }
+  }, [permitted]);
+
   if (permitted === null || !accountData) {
-    return <div>Loading...</div>;
+    return <Spin />;
   }
 
   const isSavingsAccountData = (
@@ -257,322 +327,231 @@ const Profile: React.FC = () => {
     : accountData.transactions.slice(0, 3);
 
   return (
-    <div className="profile">
-      <h2>User object</h2>
-      <pre className="code-block">
-        <code>{JSON.stringify(user, null, 2)}</code>
-        <code>{JSON.stringify(session, null, 2)}</code>
-      </pre>
-
-      <div className="dashboard">
-        <h2>
+    <div className="p-4">
+      <div className="mt-4">
+        <Title level={2}>
           {currentTenant === "saving-account-a"
             ? "Savings Account"
             : "Current Account"}
-        </h2>
-        <div className="user-info">
-          <p>
+        </Title>
+        <div className="mb-4">
+          <Paragraph>
             Currently logged in as: {user?.emails[0].email ?? "Unknown User"}
-          </p>
+          </Paragraph>
         </div>
-        <div className="balance">
-          <h3>Balance</h3>
-          <p>{permitted ? accountData.balance : "N/A"}</p>
+        <div className="mb-4">
+          <Title level={3}>Balance</Title>
+          <Paragraph>{permitted ? accountData.balance : "N/A"}</Paragraph>
           {currentTenant === "saving-account-a" &&
             isSavingsAccountData(accountData) && (
-              <div className="interest-rate">
-                <h4>Interest Rate</h4>
-                <p>{accountData.interestRate}</p>
+              <div className="mt-2">
+                <Title level={4}>Interest Rate</Title>
+                <Paragraph>{accountData.interestRate}</Paragraph>
               </div>
             )}
         </div>
-        <div className="transactions">
-          <h3>Latest Transactions</h3>
-          <ul>
-            {transactionsToDisplay.map((transaction) => (
-              <li key={transaction.id}>
-                <span className="date">{transaction.date}</span>
-                <span className="description">{transaction.description}</span>
-                <span className="amount">{transaction.amount}</span>
-              </li>
-            ))}
-          </ul>
+        <div className="mb-4">
+          <Title level={3}>Latest Transactions</Title>
+          <List
+            bordered
+            dataSource={transactionsToDisplay}
+            renderItem={(transaction) => (
+              <List.Item>
+                <div className="flex justify-between w-full">
+                  <span>{transaction.date}</span>
+                  <span>{transaction.description}</span>
+                  <span>{transaction.amount}</span>
+                </div>
+              </List.Item>
+            )}
+          />
         </div>
-        {!permitted && (
-          <div className="limited-user-message">
-            <p>
-              You are a limited user therefore you cannot see the account
-              balance nor the whole transaction history.
-            </p>
-          </div>
-        )}
-        <div className="actions">
-          <button className="action-button" onClick={handleWireTransferClick}>
-            Send Wire Transfer
-          </button>
-          <button className="action-button" onClick={handleInviteUserClick}>
-            Invite User
-          </button>
-          {reviewRequestsPermitted && (
-            <button
-              className="action-button"
-              onClick={handleReviewRequestsClick}
-            >
-              Review Wire Transfer Requests
-            </button>
+        <div className="flex gap-2">
+          {permitted ? (
+            <>
+              <Button type="primary" onClick={handleWireTransferClick}>
+                Send Wire Transfer
+              </Button>
+              <Button type="default" onClick={handleInviteUserClick}>
+                Invite User
+              </Button>
+              {reviewRequestsPermitted && (
+                <Button type="default" onClick={handleReviewRequestsClick}>
+                  Review Wire Transfer Requests
+                </Button>
+              )}
+            </>
+          ) : (
+            <Button type="primary" onClick={handleRequestAccessClick}>
+              Request Access to Account
+            </Button>
           )}
         </div>
       </div>
 
-      {showWireTransfer && (
-        <div className="wire-transfer-popup" onClick={handleCloseWireTransfer}>
-          <div
-            className="wire-transfer-content"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3>Send Wire Transfer</h3>
-            {wireTransferPermitted === false ? (
-              <RequestAccess
-                userJwt={process.env.NEXT_PUBLIC_JWT}
-                currentTenant={currentTenant}
-              />
-            ) : (
-              <>
-                <select className="dropdown">
-                  {users.map((user) => (
-                    <option key={user} value={user}>
-                      {user}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  placeholder="Amount"
-                  className="amount-input"
-                />
-                <button
-                  className="action-button"
-                  onClick={handleCloseWireTransfer}
-                >
-                  Send
-                </button>
-                <button
-                  className="action-button"
-                  onClick={handleCloseWireTransfer}
-                >
-                  Cancel Wire Transfer
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {showInviteUser && (
-        <div className="invite-user-popup" onClick={handleCloseInviteUser}>
-          <div
-            className="invite-user-content"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3>Invite User</h3>
-            <select className="dropdown">
+      <Modal
+        title="Send Wire Transfer"
+        visible={showWireTransfer}
+        onCancel={handleCloseWireTransfer}
+        footer={null}
+        width={700}
+        bodyStyle={{ height: "calc(100vh - 400px)", overflowY: "auto" }}
+      >
+        {wireTransferPermitted === false ? (
+          <RequestAccess
+            userJwt={getCookies().stytch_session_jwt}
+            currentTenant={currentTenant}
+          />
+        ) : (
+          <>
+            <Select className="w-full mb-4">
               {users.map((user) => (
-                <option key={user} value={user}>
+                <Option key={user} value={user}>
                   {user}
-                </option>
+                </Option>
               ))}
-            </select>
-            <div className="role-selection">
-              <select
-                className="dropdown"
-                onChange={handleRoleChange}
-                value={selectedRole}
-              >
-                {roles.map((role) => (
-                  <option key={role.name} value={role.name}>
-                    {role.name}
-                  </option>
-                ))}
-              </select>
-              <span
-                className="info-icon"
-                data-tooltip={
-                  roles.find((role) => role.name === selectedRole)?.description
-                }
-              >
-                ℹ️
-              </span>
-            </div>
-            <button className="action-button" onClick={handleCloseInviteUser}>
-              Invite
-            </button>
-            <button className="action-button" onClick={handleCloseInviteUser}>
-              Cancel Invite
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showReviewRequests && (
-        <div
-          className="review-requests-popup"
-          onClick={handleCloseReviewRequests}
-        >
-          <div
-            className="review-requests-content"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <UserManagement
-              userJwt={process.env.NEXT_PUBLIC_JWT}
-              currentTenant={currentTenant}
+            </Select>
+            <Input
+              type="number"
+              placeholder="Amount"
+              value={transferAmount}
+              onChange={(e) => setTransferAmount(e.target.value)}
+              className="w-full mb-4 p-2 border border-gray-300 rounded"
             />
-            <button
-              className="action-button"
-              onClick={handleCloseReviewRequests}
-            >
-              Close
-            </button>
-          </div>
+            <div className="flex justify-end gap-2">
+              <Button onClick={handleCloseWireTransfer}>
+                Cancel Wire Transfer
+              </Button>
+              <Button type="primary" onClick={handleWireTransferClick}>
+                Send
+              </Button>
+            </div>
+          </>
+        )}
+      </Modal>
+
+      <Modal
+        title="Invite User"
+        visible={showInviteUser}
+        onCancel={handleCloseInviteUser}
+        footer={null}
+        width={700}
+        bodyStyle={{ height: "calc(100vh - 400px)", overflowY: "auto" }}
+      >
+        <Select className="w-full mb-4">
+          {users.map((user) => (
+            <Option key={user} value={user}>
+              {user}
+            </Option>
+          ))}
+        </Select>
+        <div className="flex items-center mb-4">
+          <Select
+            className="w-full"
+            onChange={handleRoleChange}
+            value={selectedRole}
+          >
+            {roles.map((role) => (
+              <Option key={role.name} value={role.name}>
+                {role.name}
+              </Option>
+            ))}
+          </Select>
+          <Tooltip
+            title={
+              roles.find((role) => role.name === selectedRole)?.description
+            }
+          >
+            <InfoCircleOutlined className="ml-2" />
+          </Tooltip>
         </div>
-      )}
+        <div className="flex justify-end gap-2">
+          <Button onClick={handleCloseInviteUser}>Cancel Invite</Button>
+          <Button type="primary" onClick={handleCloseInviteUser}>
+            Invite
+          </Button>
+        </div>
+      </Modal>
 
-      <style jsx>{`
-        .dashboard {
-          padding: 20px;
-        }
+      <Modal
+        title="Review Wire Transfer Requests"
+        visible={showReviewRequests}
+        onCancel={handleCloseReviewRequests}
+        footer={null}
+        width={700}
+        bodyStyle={{ height: "calc(100vh - 200px)", overflowY: "auto" }}
+      >
+        <UserManagement
+          userJwt={getCookies().stytch_session_jwt}
+          currentTenant={currentTenant}
+        />
+        <div className="flex justify-end mt-4">
+          <Button onClick={handleCloseReviewRequests}>Close</Button>
+        </div>
+      </Modal>
 
-        .balance,
-        .transactions,
-        .actions {
-          margin-bottom: 20px;
-        }
+      <Modal
+        title="Restricted Access"
+        visible={showRestrictedAccessModal}
+        onCancel={handleCloseRestrictedAccess}
+        footer={[
+          <Button key="close" onClick={handleCloseRestrictedAccess}>
+            Close
+          </Button>,
+          <Button
+            key="request"
+            type="primary"
+            onClick={handleRequestAccessClick}
+          >
+            Request Access to Account
+          </Button>,
+        ]}
+        width={400}
+      >
+        <Paragraph>
+          You are a limited user and do not have access to view the account
+          balance or the full transaction history. Please request access from
+          the administrator.
+        </Paragraph>
+      </Modal>
 
-        .transactions ul {
-          list-style-type: none;
-          padding: 0;
-        }
+      <Modal
+        title="Request Access to Account"
+        visible={showRequestAccessModal}
+        onCancel={handleCloseRequestAccess}
+        footer={[
+          <Button key="close" onClick={handleCloseRequestAccess}>
+            Close
+          </Button>,
+        ]}
+        width={700}
+        bodyStyle={{ height: "calc(100vh - 400px)", overflowY: "auto" }}
+      >
+        <RequestAccess
+          userJwt={getCookies().stytch_session_jwt}
+          currentTenant={currentTenant}
+        />
+      </Modal>
 
-        .transactions li {
-          display: flex;
-          justify-content: space-between;
-          padding: 10px;
-          border-bottom: 1px solid #ddd;
-        }
-
-        .date,
-        .description,
-        .amount {
-          flex: 1;
-        }
-
-        .actions {
-          display: flex;
-          gap: 10px;
-        }
-
-        .action-button {
-          padding: 10px 20px;
-          background-color: #007bff;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-        }
-
-        .action-button:hover {
-          background-color: #0056b3;
-        }
-
-        .wire-transfer-popup,
-        .invite-user-popup,
-        .review-requests-popup {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background-color: rgba(0, 0, 0, 0.5);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-
-        .wire-transfer-content,
-        .invite-user-content,
-        .review-requests-content {
-          background-color: #fff;
-          padding: 60px;
-          border-radius: 8px;
-          text-align: center;
-          width: 500px;
-          height: 800px;
-        }
-
-        .dropdown {
-          display: block;
-          margin: 10px 0;
-          padding: 10px;
-          width: 100%;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-        }
-
-        .amount-input {
-          display: block;
-          margin: 10px 0;
-          padding: 10px;
-          width: 100%;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-        }
-
-        .role-selection {
-          position: relative;
-          display: flex;
-          align-items: center;
-        }
-
-        .info-icon {
-          margin-left: 10px;
-          cursor: pointer;
-        }
-
-        .info-icon::after {
-          content: attr(data-tooltip);
-          position: absolute;
-          bottom: -30px;
-          left: 50%;
-          transform: translateX(-50%);
-          background-color: #000;
-          color: #fff;
-          padding: 5px;
-          border-radius: 4px;
-          white-space: nowrap;
-          opacity: 0;
-          visibility: hidden;
-          transition: opacity 0.3s;
-          pointer-events: none;
-        }
-
-        .info-icon:hover::after {
-          opacity: 1;
-          visibility: visible;
-        }
-
-        .interest-rate {
-          margin-top: 20px;
-        }
-
-        .limited-user-message {
-          color: red;
-          font-weight: bold;
-          margin-top: 20px;
-        }
-
-        .user-info {
-          margin-bottom: 20px;
-        }
-      `}</style>
+      <Modal
+        title="Permission Denied"
+        visible={showOverAmountModal}
+        onCancel={handleCloseOverAmountModal}
+        footer={[
+          <Button
+            key="close"
+            type="primary"
+            onClick={handleCloseOverAmountModal}
+          >
+            Close
+          </Button>,
+        ]}
+        width={400}
+      >
+        <Paragraph>
+          Only Account Owners can send wire transfers over $10,000 USD.
+        </Paragraph>
+      </Modal>
     </div>
   );
 };
