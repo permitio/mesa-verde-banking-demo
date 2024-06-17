@@ -12,7 +12,7 @@ import {
   Spin,
   Modal,
   Tooltip,
-  List,
+  Table,
   Typography,
   Input,
   notification,
@@ -173,7 +173,12 @@ const Profile: React.FC = () => {
   const [transferAmount, setTransferAmount] = useState<string>(""); // New state for transfer amount
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [selectedTenant, setSelectedTenant] = useState<string | null>(null);
+  const [selectedUserEmail, setSelectedUserEmail] = useState<string | null>(
+    null,
+  );
   const [userTenants, setUserTenants] = useState<Tenant[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
   const currentUserEmail = user?.emails[0].email ?? "";
 
   function getCookies(): Record<string, string> {
@@ -233,7 +238,7 @@ const Profile: React.FC = () => {
       return;
     }
 
-    if (user && currentTenant) {
+    if (user && currentTenant && selectedUserEmail) {
       const id = user.user_id;
       const amount = parseFloat(transferAmount);
 
@@ -260,31 +265,48 @@ const Profile: React.FC = () => {
           data[currentTenant].transactions.push({
             id: data[currentTenant].transactions.length + 1,
             date: new Date().toISOString().split("T")[0],
-            description: `Wire transfer to ${selectedUser}`,
+            description: `Outbound transfer to ${selectedUserEmail}`,
             amount: `-£${parseFloat(transferAmount).toFixed(2)}`,
           });
 
           // Update local storage
           localStorage.setItem("accountData", JSON.stringify(data));
+        }
 
-          setShowWireTransfer(false);
-          setTransferAmount("");
-          setSelectedUser(null);
-          setSelectedTenant(null);
+        if (selectedTenant && data[selectedTenant]) {
+          data[selectedTenant].balance = (
+            parseFloat(data[selectedTenant].balance.replace(/[^0-9.-]+/g, "")) +
+            parseFloat(transferAmount)
+          ).toLocaleString("en-GB", { style: "currency", currency: "GBP" });
 
-          console.log(
-            `User ${id} is ${isPermitted ? "" : "NOT "}PERMITTED to send wire transfer.`,
-          );
-          setWireTransferPermitted(isPermitted);
-
-          // Show success message and close the modal
-          notification.success({
-            message: "Wire Transfer Successful",
-            description: `Outbound transfer of £${transferAmount} to ${selectedUser}.`,
+          data[selectedTenant].transactions.push({
+            id: data[selectedTenant].transactions.length + 1,
+            date: new Date().toISOString().split("T")[0],
+            description: `Wire transfer received from ${currentUserEmail}`,
+            amount: `+£${parseFloat(transferAmount).toFixed(2)}`,
           });
 
-          setShowWireTransfer(false);
+          // Update local storage
+          localStorage.setItem("accountData", JSON.stringify(data));
         }
+
+        setShowWireTransfer(false);
+        setTransferAmount("");
+        setSelectedUser(null);
+        setSelectedTenant(null);
+
+        console.log(
+          `User ${id} is ${isPermitted ? "" : "NOT "}PERMITTED to send wire transfer.`,
+        );
+        setWireTransferPermitted(isPermitted);
+
+        // Show success message and close the modal
+        notification.success({
+          message: "Wire Transfer Successful",
+          description: `Outbound transfer of £${transferAmount} to ${selectedUserEmail}.`,
+        });
+
+        setShowWireTransfer(false);
       }
     }
   };
@@ -382,18 +404,44 @@ const Profile: React.FC = () => {
     return "interestRate" in data;
   };
 
+  const sortedTransactions = accountData.transactions
+    .slice()
+    .sort((a, b) => b.id - a.id);
+
   const transactionsToDisplay = permitted
-    ? accountData.transactions
-    : accountData.transactions.slice(0, 3);
+    ? sortedTransactions.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize,
+      )
+    : sortedTransactions.slice(0, 3);
 
   const handleUserChange = (email: string) => {
     const user = allUsers.data.find((user) => user.email === email);
     if (user) {
       setSelectedUser(user.key);
+      setSelectedUserEmail(user.email);
       setSelectedTenant(null);
       setTransferAmount("");
     }
   };
+
+  const columns = [
+    {
+      title: "Date",
+      dataIndex: "date",
+      key: "date",
+    },
+    {
+      title: "Description",
+      dataIndex: "description",
+      key: "description",
+    },
+    {
+      title: "Amount",
+      dataIndex: "amount",
+      key: "amount",
+    },
+  ];
 
   return (
     <div className="p-4">
@@ -421,18 +469,18 @@ const Profile: React.FC = () => {
         </div>
         <div className="mb-4">
           <Title level={3}>Latest Transactions</Title>
-          <List
-            bordered
-            dataSource={transactionsToDisplay}
-            renderItem={(transaction) => (
-              <List.Item>
-                <div className="flex justify-between w-full">
-                  <span>{transaction.date}</span>
-                  <span>{transaction.description}</span>
-                  <span>{transaction.amount}</span>
-                </div>
-              </List.Item>
-            )}
+          <Table
+            columns={columns}
+            dataSource={transactionsToDisplay.map((transaction) => ({
+              ...transaction,
+              key: transaction.id,
+            }))}
+            pagination={{
+              current: currentPage,
+              pageSize: pageSize,
+              total: sortedTransactions.length,
+              onChange: (page) => setCurrentPage(page),
+            }}
           />
         </div>
         <div className="flex gap-2">
