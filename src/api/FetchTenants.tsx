@@ -1,7 +1,7 @@
 // src/api/FetchTenants.ts
+
 export const fetchTenantsForUser = async (userId: string) => {
   try {
-    // Fetch user details which include associated tenants
     const userResponse = await fetch(
       `/api/facts/${process.env.NEXT_PUBLIC_PROJ_ID}/${process.env.NEXT_PUBLIC_ENV_ID}/users/${userId}`,
       {
@@ -29,13 +29,11 @@ export const fetchTenantsForUser = async (userId: string) => {
       return [];
     }
 
-    // Extract tenant IDs from the associated_tenants
     const tenantIds = userData.associated_tenants.map(
       (tenant: any) => tenant.tenant,
     );
     console.log("Tenant IDs for the user:", tenantIds);
 
-    // Fetch all tenants
     const tenantsResponse = await fetch(
       `/api/facts/${process.env.NEXT_PUBLIC_PROJ_ID}/${process.env.NEXT_PUBLIC_ENV_ID}/tenants`,
       {
@@ -54,7 +52,6 @@ export const fetchTenantsForUser = async (userId: string) => {
     const tenantsData = await tenantsResponse.json();
     console.log("Fetched tenants data:", tenantsData);
 
-    // Filter tenants based on tenant IDs
     const filteredTenants = tenantsData.filter((tenant: any) =>
       tenantIds.includes(tenant.key),
     );
@@ -63,6 +60,33 @@ export const fetchTenantsForUser = async (userId: string) => {
     return filteredTenants;
   } catch (error) {
     console.error("Error fetching tenants:", error);
+    return [];
+  }
+};
+
+export const fetchAllUsers = async () => {
+  try {
+    const usersResponse = await fetch(
+      `/api/facts/${process.env.NEXT_PUBLIC_PROJ_ID}/${process.env.NEXT_PUBLIC_ENV_ID}/users`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_PERMIT_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    if (!usersResponse.ok) {
+      throw new Error("Failed to fetch all users");
+    }
+
+    const usersData = await usersResponse.json();
+    console.log("Fetched all users data:", usersData);
+
+    return usersData; // Ensure this returns an array of users
+  } catch (error) {
+    console.error("Error fetching users:", error);
     return [];
   }
 };

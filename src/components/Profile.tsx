@@ -15,8 +15,10 @@ import {
   List,
   Typography,
   Input,
+  notification,
 } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
+import { fetchTenantsForUser, fetchAllUsers } from "../api/FetchTenants";
 
 const { Option } = Select;
 const { Title, Paragraph } = Typography;
@@ -45,6 +47,12 @@ type SavingsAccountData = {
 };
 
 type AccountData = CurrentAccountData | SavingsAccountData;
+
+type Tenant = {
+  id: string;
+  key: string; // Add tenant key
+  name: string;
+};
 
 const mockData = {
   "current-account-a": {
@@ -145,7 +153,7 @@ const Profile: React.FC = () => {
   const stytch = useStytch();
   const { user } = useStytchUser();
   const { session } = useStytchSession();
-  const { currentTenant } = useAccount();
+  const { currentTenant, allUsers } = useAccount();
   const [showWireTransfer, setShowWireTransfer] = useState(false);
   const [showInviteUser, setShowInviteUser] = useState(false);
   const [showReviewRequests, setShowReviewRequests] = useState(false);
@@ -163,6 +171,10 @@ const Profile: React.FC = () => {
     boolean | null
   >(null);
   const [transferAmount, setTransferAmount] = useState<string>(""); // New state for transfer amount
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [selectedTenant, setSelectedTenant] = useState<string | null>(null);
+  const [userTenants, setUserTenants] = useState<Tenant[]>([]);
+  const currentUserEmail = user?.emails[0].email ?? "";
 
   function getCookies(): Record<string, string> {
     const pairs = document.cookie.split(";");
@@ -181,8 +193,7 @@ const Profile: React.FC = () => {
   const users = [
     "filip@permit.io",
     "filip+1@permit.io",
-    "filip+2@permit.io",
-    "filip+3@permit.io",
+    "filip+test@permit.io",
   ];
   const roles = [
     { name: "Admin", description: "Can manage everything in your account" },
@@ -197,36 +208,85 @@ const Profile: React.FC = () => {
     },
   ];
 
-  const handleWireTransferClick = async () => {
+  useEffect(() => {
+    if (!localStorage.getItem("accountData")) {
+      localStorage.setItem("accountData", JSON.stringify(mockData));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedUser) {
+      fetchTenantsForUser(selectedUser).then(setUserTenants);
+    }
+  }, [selectedUser]);
+
+  const handleOpenWireTransferModal = () => {
+    setShowWireTransfer(true);
+  };
+
+  const handleWireTransferSubmit = async () => {
+    if (!transferAmount || parseFloat(transferAmount) <= 0) {
+      notification.error({
+        message: "Invalid Transfer Amount",
+        description: "Please enter a valid transfer amount.",
+      });
+      return;
+    }
+
     if (user && currentTenant) {
       const id = user.user_id;
       const amount = parseFloat(transferAmount);
 
-      // Check if the amount is over 10000
-      if (amount > 10000) {
-        const isPermitted = await permit.check(id, "send", {
-          type: "Wire_Transfer",
-          attributes: { amount: amount },
-          tenant: currentTenant,
-        });
-
-        if (!isPermitted) {
-          setShowOverAmountModal(true);
-          return;
-        }
-      }
+      console.log("AMOUNT: ", amount);
 
       const isPermitted = await permit.check(id, "send", {
         type: "Wire_Transfer",
+        attributes: { amount: amount },
         tenant: currentTenant,
       });
 
-      console.log(
-        `User ${id} is ${isPermitted ? "" : "NOT "}PERMITTED to send wire transfer.`,
-      );
-      setWireTransferPermitted(isPermitted);
+      if (!isPermitted) {
+        setShowOverAmountModal(true);
+        return;
+      } else {
+        const data = JSON.parse(localStorage.getItem("accountData") || "{}");
+
+        if (data[currentTenant]) {
+          data[currentTenant].balance = (
+            parseFloat(data[currentTenant].balance.replace(/[^0-9.-]+/g, "")) -
+            parseFloat(transferAmount)
+          ).toLocaleString("en-GB", { style: "currency", currency: "GBP" });
+
+          data[currentTenant].transactions.push({
+            id: data[currentTenant].transactions.length + 1,
+            date: new Date().toISOString().split("T")[0],
+            description: `Wire transfer to ${selectedUser}`,
+            amount: `-£${parseFloat(transferAmount).toFixed(2)}`,
+          });
+
+          // Update local storage
+          localStorage.setItem("accountData", JSON.stringify(data));
+
+          setShowWireTransfer(false);
+          setTransferAmount("");
+          setSelectedUser(null);
+          setSelectedTenant(null);
+
+          console.log(
+            `User ${id} is ${isPermitted ? "" : "NOT "}PERMITTED to send wire transfer.`,
+          );
+          setWireTransferPermitted(isPermitted);
+
+          // Show success message and close the modal
+          notification.success({
+            message: "Wire Transfer Successful",
+            description: `Outbound transfer of £${transferAmount} to ${selectedUser}.`,
+          });
+
+          setShowWireTransfer(false);
+        }
+      }
     }
-    setShowWireTransfer(true);
   };
 
   const handleCloseWireTransfer = () => {
@@ -273,8 +333,8 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     if (currentTenant) {
-      const data = mockData[currentTenant as keyof typeof mockData];
-      setAccountData(data);
+      const data = JSON.parse(localStorage.getItem("accountData") || "{}");
+      setAccountData(data[currentTenant as keyof typeof mockData]);
     }
   }, [currentTenant]);
 
@@ -326,6 +386,15 @@ const Profile: React.FC = () => {
     ? accountData.transactions
     : accountData.transactions.slice(0, 3);
 
+  const handleUserChange = (email: string) => {
+    const user = allUsers.data.find((user) => user.email === email);
+    if (user) {
+      setSelectedUser(user.key);
+      setSelectedTenant(null);
+      setTransferAmount("");
+    }
+  };
+
   return (
     <div className="p-4">
       <div className="mt-4">
@@ -369,7 +438,7 @@ const Profile: React.FC = () => {
         <div className="flex gap-2">
           {permitted ? (
             <>
-              <Button type="primary" onClick={handleWireTransferClick}>
+              <Button type="primary" onClick={handleOpenWireTransferModal}>
                 Send Wire Transfer
               </Button>
               <Button type="default" onClick={handleInviteUserClick}>
@@ -404,25 +473,59 @@ const Profile: React.FC = () => {
           />
         ) : (
           <>
-            <Select className="w-full mb-4">
-              {users.map((user) => (
-                <Option key={user} value={user}>
-                  {user}
-                </Option>
-              ))}
+            <Select
+              className="w-full mb-4"
+              onChange={handleUserChange}
+              placeholder="Select User"
+            >
+              {allUsers.data
+                .filter((user) => user.email !== currentUserEmail)
+                .map((user) => (
+                  <Option key={user.key} value={user.email}>
+                    {user.email}
+                  </Option>
+                ))}
             </Select>
-            <Input
-              type="number"
-              placeholder="Amount"
-              value={transferAmount}
-              onChange={(e) => setTransferAmount(e.target.value)}
-              className="w-full mb-4 p-2 border border-gray-300 rounded"
-            />
+
+            {selectedUser && (
+              <Select
+                className="w-full mb-4"
+                placeholder="Select Tenant"
+                onChange={(value) => setSelectedTenant(value)}
+              >
+                {userTenants.map((tenant) => {
+                  if (tenant.key === currentTenant) {
+                    if (userTenants.length === 1) {
+                      return null;
+                    }
+                  } else {
+                    return (
+                      <Option key={tenant.key} value={tenant.key}>
+                        {tenant.name}
+                      </Option>
+                    );
+                  }
+                })}
+              </Select>
+            )}
+
+            {selectedTenant && (
+              <Input
+                type="number"
+                placeholder="Amount"
+                value={transferAmount}
+                onChange={(e) => setTransferAmount(e.target.value)}
+                className="w-full mb-4 p-2 border border-gray-300 rounded"
+              />
+            )}
+
             <div className="flex justify-end gap-2">
-              <Button onClick={handleCloseWireTransfer}>
-                Cancel Wire Transfer
-              </Button>
-              <Button type="primary" onClick={handleWireTransferClick}>
+              <Button onClick={handleCloseWireTransfer}>Cancel</Button>
+              <Button
+                type="primary"
+                onClick={handleWireTransferSubmit}
+                disabled={!selectedUser || !selectedTenant || !transferAmount}
+              >
                 Send
               </Button>
             </div>
@@ -549,7 +652,7 @@ const Profile: React.FC = () => {
         width={400}
       >
         <Paragraph>
-          Only Account Owners can send wire transfers over $10,000 USD.
+          Only Account Owners can send wire transfers over $1,000 USD.
         </Paragraph>
       </Modal>
     </div>

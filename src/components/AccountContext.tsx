@@ -1,5 +1,3 @@
-// src/components/AccountContext.tsx
-
 "use client";
 
 import React, {
@@ -9,7 +7,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { fetchTenantsForUser } from "../../src/api/FetchTenants";
+import { fetchTenantsForUser, fetchAllUsers } from "../../src/api/FetchTenants";
 import { useStytchUser } from "@stytch/nextjs";
 
 type Tenant = {
@@ -21,6 +19,7 @@ type Tenant = {
 type AccountContextType = {
   tenants: Tenant[];
   currentTenant: string;
+  allUsers: string[];
   handleTenantChange: (tenantKey: string) => void;
 };
 
@@ -38,6 +37,7 @@ export const AccountProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useStytchUser();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [currentTenant, setCurrentTenant] = useState<string>("");
+  const [allUsers, setAllUsers] = useState<string[]>([]);
 
   useEffect(() => {
     const getTenants = async () => {
@@ -45,6 +45,10 @@ export const AccountProvider = ({ children }: { children: ReactNode }) => {
         if (user) {
           const fetchedTenants = await fetchTenantsForUser(user.user_id);
           setTenants(fetchedTenants);
+
+          const fetchedAllUsers = await fetchAllUsers();
+          setAllUsers(fetchedAllUsers);
+
           if (fetchedTenants.length > 0) {
             setCurrentTenant(fetchedTenants[0].key); // Use tenant key
           }
@@ -62,7 +66,7 @@ export const AccountProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AccountContext.Provider
-      value={{ tenants, currentTenant, handleTenantChange }}
+      value={{ tenants, currentTenant, allUsers, handleTenantChange }}
     >
       {children}
     </AccountContext.Provider>
