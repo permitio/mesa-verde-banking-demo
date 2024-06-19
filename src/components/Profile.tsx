@@ -19,6 +19,7 @@ import {
 } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { fetchTenantsForUser, fetchAllUsers } from "../api/FetchTenants";
+import { mock } from "node:test";
 
 const { Option } = Select;
 const { Title, Paragraph } = Typography;
@@ -46,6 +47,10 @@ type SavingsAccountData = {
   transactions: Transaction[];
 };
 
+type MockData = {
+  [key: string]: CurrentAccountData | SavingsAccountData;
+};
+
 type AccountData = CurrentAccountData | SavingsAccountData;
 
 type Tenant = {
@@ -54,7 +59,7 @@ type Tenant = {
   name: string;
 };
 
-const mockData = {
+const mockData: MockData = {
   "current-account-a": {
     balance: "£5,000.00",
     transactions: [
@@ -161,6 +166,8 @@ const Profile: React.FC = () => {
     useState(false);
   const [showRequestAccessModal, setShowRequestAccessModal] = useState(false);
   const [showOverAmountModal, setShowOverAmountModal] = useState(false); // New state for over amount modal
+  const [showPermissionDeniedModal, setShowPermissionDeniedModal] =
+    useState(false); // New state for permission denied modal
   const [selectedRole, setSelectedRole] = useState<string>("Admin");
   const [accountData, setAccountData] = useState<AccountData | null>(null);
   const [permitted, setPermitted] = useState<boolean | null>(null);
@@ -200,6 +207,7 @@ const Profile: React.FC = () => {
     "filip+1@permit.io",
     "filip+test@permit.io",
   ];
+
   const roles = [
     { name: "Admin", description: "Can manage everything in your account" },
     {
@@ -213,9 +221,120 @@ const Profile: React.FC = () => {
     },
   ];
 
+  const checkIfWithinLast30Seconds = (timestamp) => {
+    const providedTime = new Date(timestamp).getTime();
+    const currentTime = Date.now();
+
+    const differenceInSeconds = (currentTime - providedTime) / 1000;
+
+    return differenceInSeconds <= 30;
+  };
+
+  const createUserAndAssignRole = async (userId: string, userEmail: string) => {
+    const numbers = userEmail.match(/\+(\d+)/);
+    const extractedNumbers = numbers ? numbers[1] : "";
+
+    try {
+      const createTenant = await fetch(
+        `/api/facts/${process.env.NEXT_PUBLIC_PROJ_ID}/${process.env.NEXT_PUBLIC_ENV_ID}/tenants`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.NEXT_PUBLIC_PERMIT_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            key: `current-account-${extractedNumbers}`,
+            name: `Current Account ${extractedNumbers}`,
+          }),
+        },
+      );
+
+      const responseJson = await createTenant.json();
+      console.log(responseJson);
+    } catch (error) {
+      console.error("Error creating a tenant: ", error);
+      throw error;
+    }
+
+    try {
+      const addUserToTenant = await fetch(
+        `/api/facts/${process.env.NEXT_PUBLIC_PROJ_ID}/${process.env.NEXT_PUBLIC_ENV_ID}/tenants/current-account-${extractedNumbers}/users`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.NEXT_PUBLIC_PERMIT_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            key: userId,
+            email: userEmail,
+          }),
+        },
+      );
+
+      const responseJson = await addUserToTenant.json();
+      console.log(responseJson);
+    } catch (error) {
+      console.error("Error creating a tenant: ", error);
+      throw error;
+    }
+
+    try {
+      const assignRole = await fetch(
+        `/api/facts/${process.env.NEXT_PUBLIC_PROJ_ID}/${process.env.NEXT_PUBLIC_ENV_ID}/role_assignments`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.NEXT_PUBLIC_PERMIT_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user: userId,
+            role: "AccountOwner",
+            tenant: `current-account-${extractedNumbers}`,
+          }),
+        },
+      );
+
+      const responseJson = await assignRole.json();
+      console.log(responseJson);
+    } catch (error) {
+      console.error("Error creating a tenant: ", error);
+      throw error;
+    }
+
+    mockData[`current-account-${extractedNumbers}`] = {
+      balance: "0",
+      transactions: [],
+    };
+
+    const mockDataString = JSON.stringify(mockData);
+
+    localStorage.setItem("accountData", mockDataString);
+
+    window.location.reload();
+  };
+
   useEffect(() => {
-    if (!localStorage.getItem("accountData")) {
-      localStorage.setItem("accountData", JSON.stringify(mockData));
+    const fetchData = async () => {
+      const timestamp = user?.created_at;
+      const isWithinLast30Seconds = checkIfWithinLast30Seconds(timestamp);
+
+      console.log(
+        `The provided timestamp is within the last 30 seconds: ${isWithinLast30Seconds}`,
+      );
+
+      if (isWithinLast30Seconds) {
+        await createUserAndAssignRole(user.user_id, user.emails[0].email);
+      }
+
+      const tenants = await fetchTenantsForUser(user.user_id);
+      setUserTenants(tenants);
+    };
+
+    if (user && session) {
+      fetchData();
     }
   }, []);
 
@@ -224,6 +343,12 @@ const Profile: React.FC = () => {
       fetchTenantsForUser(selectedUser).then(setUserTenants);
     }
   }, [selectedUser]);
+
+  useEffect(() => {
+    if (!localStorage.getItem("accountData")) {
+      localStorage.setItem("accountData", JSON.stringify(mockData));
+    }
+  }, []);
 
   const handleOpenWireTransferModal = () => {
     setShowWireTransfer(true);
@@ -241,8 +366,6 @@ const Profile: React.FC = () => {
     if (user && currentTenant && selectedUserEmail) {
       const id = user.user_id;
       const amount = parseFloat(transferAmount);
-
-      console.log("AMOUNT: ", amount);
 
       const isPermitted = await permit.check(id, "send", {
         type: "Wire_Transfer",
@@ -316,12 +439,28 @@ const Profile: React.FC = () => {
     setWireTransferPermitted(null);
   };
 
-  const handleInviteUserClick = () => {
-    setShowInviteUser(true);
+  const handleInviteUserClick = async () => {
+    if (user && currentTenant) {
+      const id = user.user_id;
+      const isPermitted = await permit.check(id, "invite-user", {
+        type: "Account",
+        tenant: currentTenant,
+      });
+
+      if (isPermitted) {
+        setShowInviteUser(true);
+      } else {
+        setShowPermissionDeniedModal(true);
+      }
+    }
   };
 
   const handleCloseInviteUser = () => {
     setShowInviteUser(false);
+  };
+
+  const handleClosePermissionDenied = () => {
+    setShowPermissionDeniedModal(false);
   };
 
   const handleRoleChange = (value: string) => {
@@ -356,6 +495,7 @@ const Profile: React.FC = () => {
   useEffect(() => {
     if (currentTenant) {
       const data = JSON.parse(localStorage.getItem("accountData") || "{}");
+      console.log(data);
       setAccountData(data[currentTenant as keyof typeof mockData]);
     }
   }, [currentTenant]);
@@ -376,7 +516,7 @@ const Profile: React.FC = () => {
 
         const canReviewRequests = await permit.check(id, "review-requests", {
           type: "Wire_Transfer",
-          tenant: "current-account-b",
+          tenant: currentTenant,
         });
         console.log(
           `User ${id} is ${canReviewRequests ? "" : "NOT "}PERMITTED to review wire transfer requests.`,
@@ -589,12 +729,23 @@ const Profile: React.FC = () => {
         width={700}
         bodyStyle={{ height: "calc(100vh - 400px)", overflowY: "auto" }}
       >
-        <Select className="w-full mb-4">
-          {users.map((user) => (
-            <Option key={user} value={user}>
-              {user}
-            </Option>
-          ))}
+        <Select
+          className="w-full mb-4"
+          placeholder="Select User"
+          // Adding the showSearch and filterOption to help debug if there is a typo
+          showSearch
+          filterOption={(input, option) =>
+            option?.props.children.toLowerCase().indexOf(input.toLowerCase()) >=
+            0
+          }
+        >
+          {allUsers.data
+            .filter((user) => user.email !== currentUserEmail)
+            .map((user) => (
+              <Option key={user.key} value={user.email}>
+                {user.email}
+              </Option>
+            ))}
         </Select>
         <div className="flex items-center mb-4">
           <Select
@@ -622,6 +773,26 @@ const Profile: React.FC = () => {
             Invite
           </Button>
         </div>
+      </Modal>
+
+      <Modal
+        title="Permission Denied"
+        visible={showPermissionDeniedModal}
+        onCancel={handleClosePermissionDenied}
+        footer={[
+          <Button
+            key="close"
+            type="primary"
+            onClick={handleClosePermissionDenied}
+          >
+            Close
+          </Button>,
+        ]}
+        width={400}
+      >
+        <Paragraph>
+          Only account owners can invite other users to their accounts.
+        </Paragraph>
       </Modal>
 
       <Modal

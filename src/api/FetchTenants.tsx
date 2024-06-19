@@ -1,6 +1,8 @@
 // src/api/FetchTenants.ts
 
 export const fetchTenantsForUser = async (userId: string) => {
+  console.log("USER TRYING TO LOG IN: ", userId);
+
   try {
     const userResponse = await fetch(
       `/api/facts/${process.env.NEXT_PUBLIC_PROJ_ID}/${process.env.NEXT_PUBLIC_ENV_ID}/users/${userId}`,

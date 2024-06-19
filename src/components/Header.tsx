@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useStytch } from "@stytch/nextjs";
+import { useStytch, useStytchUser } from "@stytch/nextjs";
 import { useAccount } from "../../src/components/AccountContext";
 import { Button, Select, Spin } from "antd";
 
@@ -13,6 +13,7 @@ const { Option } = Select;
 
 const Header = () => {
   const stytch = useStytch();
+  const { user } = useStytchUser();
   const { tenants, currentTenant, handleTenantChange } = useAccount();
   const [loading, setLoading] = useState(true);
 
@@ -25,6 +26,8 @@ const Header = () => {
   const handleChange = (value: string) => {
     handleTenantChange(value);
   };
+
+  console.log("STYTCH USER: ", user);
 
   return (
     <header className="flex justify-between items-center p-4 bg-gray-100">
@@ -39,7 +42,7 @@ const Header = () => {
           />
         </a>
       </Link>
-      {stytch.session ? (
+      {stytch.session && user ? (
         <div className="flex items-center gap-4">
           {loading ? (
             <Spin />
