@@ -7,8 +7,8 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { fetchTenantsForUser, fetchAllUsers } from "../../src/api/FetchTenants";
 import { useStytchUser } from "@stytch/nextjs";
+import { checkIfWithinLast30Seconds } from "../../lib/checkFirstTimeLogin";
 
 type Tenant = {
   id: string;
@@ -43,15 +43,24 @@ export const AccountProvider = ({ children }: { children: ReactNode }) => {
     const getTenants = async () => {
       try {
         if (user) {
-          const fetchedTenants = await fetchTenantsForUser(user.user_id);
-          setTenants(fetchedTenants);
+          const getUserTenants = await (
+            await fetch(`../profile/api/tenants?id=${user.user_id}`)
+          ).json();
 
-          const fetchedAllUsers = await fetchAllUsers();
-          setAllUsers(fetchedAllUsers);
+          console.log("USER TENANTS: ", getUserTenants);
+          setTenants(getUserTenants);
 
-          if (fetchedTenants.length > 0) {
-            setCurrentTenant(fetchedTenants[0].key); // Use tenant key
+          if (getUserTenants.length > 0) {
+            setCurrentTenant(getUserTenants[0].key); // Use tenant key
           }
+
+          const getAllUsers = await fetch("../profile/api/users");
+          if (!getAllUsers.ok) {
+            throw new Error("Failed to fetch users");
+          }
+          const allUsers = await getAllUsers.json();
+          console.log("ALL USERS: ", allUsers);
+          setAllUsers(allUsers);
         }
       } catch (error) {
         console.error("Failed to fetch tenants", error);

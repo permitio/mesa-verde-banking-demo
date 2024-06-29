@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useStytch, useStytchSession, useStytchUser } from "@stytch/nextjs";
+import { useStytchSession, useStytchUser } from "@stytch/nextjs";
 import { useAccount } from "@/src/components/AccountContext";
 import RequestAccess from "./RequestAccess";
 import UserManagement from "./UserManagement";
@@ -11,15 +11,14 @@ import {
   Select,
   Spin,
   Modal,
-  Tooltip,
   Table,
   Typography,
   Input,
   notification,
 } from "antd";
-import { InfoCircleOutlined } from "@ant-design/icons";
-import { fetchTenantsForUser, fetchAllUsers } from "../api/FetchTenants";
-import { mock } from "node:test";
+import { getCookies } from "../../lib/fetchCookies";
+import { checkIfWithinLast30Seconds } from "../../lib/checkFirstTimeLogin";
+import mockData, { AccountData, SavingsAccountData } from "../../lib/mockData";
 
 const { Option } = Select;
 const { Title, Paragraph } = Typography;
@@ -29,145 +28,24 @@ const permit = new Permit({
   pdp: "http://localhost:7766",
 });
 
-type Transaction = {
-  id: number;
-  date: string;
-  description: string;
-  amount: string;
-};
-
-type CurrentAccountData = {
-  balance: string;
-  transactions: Transaction[];
-};
-
-type SavingsAccountData = {
-  balance: string;
-  interestRate: string;
-  transactions: Transaction[];
-};
-
-type MockData = {
-  [key: string]: CurrentAccountData | SavingsAccountData;
-};
-
-type AccountData = CurrentAccountData | SavingsAccountData;
-
 type Tenant = {
   id: string;
-  key: string; // Add tenant key
+  key: string;
   name: string;
 };
 
-const mockData: MockData = {
-  "current-account-a": {
-    balance: "£5,000.00",
-    transactions: [
-      {
-        id: 1,
-        date: "2024-06-01",
-        description: "Grocery Store",
-        amount: "-£50.00",
-      },
-      {
-        id: 2,
-        date: "2024-06-03",
-        description: "Salary",
-        amount: "+£3,000.00",
-      },
-      {
-        id: 3,
-        date: "2024-06-05",
-        description: "Electricity Bill",
-        amount: "-£100.00",
-      },
-      { id: 4, date: "2024-06-07", description: "Rent", amount: "-£1,500.00" },
-      {
-        id: 5,
-        date: "2024-06-09",
-        description: "Coffee Shop",
-        amount: "-£5.00",
-      },
-      {
-        id: 6,
-        date: "2024-06-10",
-        description: "Subscription",
-        amount: "-£15.00",
-      },
-    ],
-  },
-  "current-account-b": {
-    balance: "£3,000.00",
-    transactions: [
-      {
-        id: 1,
-        date: "2024-06-01",
-        description: "Grocery Store",
-        amount: "-£30.00",
-      },
-      {
-        id: 2,
-        date: "2024-06-03",
-        description: "Salary",
-        amount: "+£2,000.00",
-      },
-      {
-        id: 3,
-        date: "2024-06-05",
-        description: "Electricity Bill",
-        amount: "-£80.00",
-      },
-      { id: 4, date: "2024-06-07", description: "Rent", amount: "-£1,200.00" },
-      {
-        id: 5,
-        date: "2024-06-09",
-        description: "Coffee Shop",
-        amount: "-£10.00",
-      },
-      {
-        id: 6,
-        date: "2024-06-10",
-        description: "Subscription",
-        amount: "-£20.00",
-      },
-    ],
-  },
-  "saving-account-a": {
-    balance: "£10,000.00",
-    interestRate: "3.6%",
-    transactions: [
-      { id: 1, date: "2024-06-01", description: "Interest", amount: "+£50.00" },
-      {
-        id: 2,
-        date: "2024-06-03",
-        description: "Deposit",
-        amount: "+£5,000.00",
-      },
-      {
-        id: 3,
-        date: "2024-06-05",
-        description: "Deposit",
-        amount: "+£3,000.00",
-      },
-      { id: 4, date: "2024-06-07", description: "Interest", amount: "+£30.00" },
-    ],
-  },
-};
-
 const Profile: React.FC = () => {
-  const stytch = useStytch();
   const { user } = useStytchUser();
   const { session } = useStytchSession();
   const { currentTenant, allUsers } = useAccount();
   const [showWireTransfer, setShowWireTransfer] = useState(false);
-  const [showInviteUser, setShowInviteUser] = useState(false);
   const [showReviewRequests, setShowReviewRequests] = useState(false);
   const [showRestrictedAccessModal, setShowRestrictedAccessModal] =
     useState(false);
   const [showRequestAccessModal, setShowRequestAccessModal] = useState(false);
-  const [showOverAmountModal, setShowOverAmountModal] = useState(false); // New state for over amount modal
+  const [showOverAmountModal, setShowOverAmountModal] = useState(false);
   const [showPermissionDeniedModal, setShowPermissionDeniedModal] =
-    useState(false); // New state for permission denied modal
+    useState(false);
   const [selectedRole, setSelectedRole] = useState<string>("Admin");
   const [accountData, setAccountData] = useState<AccountData | null>(null);
   const [permitted, setPermitted] = useState<boolean | null>(null);
@@ -177,7 +55,7 @@ const Profile: React.FC = () => {
   const [reviewRequestsPermitted, setReviewRequestsPermitted] = useState<
     boolean | null
   >(null);
-  const [transferAmount, setTransferAmount] = useState<string>(""); // New state for transfer amount
+  const [transferAmount, setTransferAmount] = useState<string>("");
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [selectedTenant, setSelectedTenant] = useState<string | null>(null);
   const [selectedUserEmail, setSelectedUserEmail] = useState<string | null>(
@@ -186,162 +64,83 @@ const Profile: React.FC = () => {
   const [userTenants, setUserTenants] = useState<Tenant[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
-  const currentUserEmail = user?.emails[0].email ?? "";
-
-  function getCookies(): Record<string, string> {
-    const pairs = document.cookie.split(";");
-    const cookies: Record<string, string> = {};
-
-    for (let i = 0; i < pairs.length; i++) {
-      const pair = pairs[i].split("=");
-      cookies[(pair[0] + "").trim()] = decodeURIComponent(
-        pair.slice(1).join("="),
-      );
-    }
-
-    return cookies;
-  }
-
-  const users = [
-    "filip@permit.io",
-    "filip+1@permit.io",
-    "filip+test@permit.io",
-  ];
-
-  const roles = [
-    { name: "Admin", description: "Can manage everything in your account" },
-    {
-      name: "Manager",
-      description: "Can only manage transactions and investments Mon-Fri",
-    },
-    {
-      name: "Viewer",
-      description:
-        "Can only look at your current balance and past 3 transactions",
-    },
-  ];
-
-  const checkIfWithinLast30Seconds = (timestamp) => {
-    const providedTime = new Date(timestamp).getTime();
-    const currentTime = Date.now();
-
-    const differenceInSeconds = (currentTime - providedTime) / 1000;
-
-    return differenceInSeconds <= 30;
-  };
+  const currentUserEmail = user?.emails?.[0]?.email ?? "";
 
   const createUserAndAssignRole = async (userId: string, userEmail: string) => {
-    const numbers = userEmail.match(/\+(\d+)/);
-    const extractedNumbers = numbers ? numbers[1] : "";
+    const response = await fetch("../profile/api/syncUser", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ userId, userEmail }),
+    });
 
-    try {
-      const createTenant = await fetch(
-        `/api/facts/${process.env.NEXT_PUBLIC_PROJ_ID}/${process.env.NEXT_PUBLIC_ENV_ID}/tenants`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.NEXT_PUBLIC_PERMIT_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            key: `current-account-${extractedNumbers}`,
-            name: `Current Account ${extractedNumbers}`,
-          }),
-        },
+    if (response.ok) {
+      const data = await response.json();
+      const currentAccountData = JSON.parse(
+        localStorage.getItem("accountData") || "{}",
       );
-
-      const responseJson = await createTenant.json();
-      console.log(responseJson);
-    } catch (error) {
-      console.error("Error creating a tenant: ", error);
-      throw error;
+      const updatedAccountData = { ...currentAccountData, ...data.mockData };
+      localStorage.setItem("accountData", JSON.stringify(updatedAccountData));
+      window.location.reload();
+    } else {
+      const errorData = await response.json();
+      console.error("Error:", errorData.error);
     }
-
-    try {
-      const addUserToTenant = await fetch(
-        `/api/facts/${process.env.NEXT_PUBLIC_PROJ_ID}/${process.env.NEXT_PUBLIC_ENV_ID}/tenants/current-account-${extractedNumbers}/users`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.NEXT_PUBLIC_PERMIT_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            key: userId,
-            email: userEmail,
-          }),
-        },
-      );
-
-      const responseJson = await addUserToTenant.json();
-      console.log(responseJson);
-    } catch (error) {
-      console.error("Error creating a tenant: ", error);
-      throw error;
-    }
-
-    try {
-      const assignRole = await fetch(
-        `/api/facts/${process.env.NEXT_PUBLIC_PROJ_ID}/${process.env.NEXT_PUBLIC_ENV_ID}/role_assignments`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.NEXT_PUBLIC_PERMIT_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            user: userId,
-            role: "AccountOwner",
-            tenant: `current-account-${extractedNumbers}`,
-          }),
-        },
-      );
-
-      const responseJson = await assignRole.json();
-      console.log(responseJson);
-    } catch (error) {
-      console.error("Error creating a tenant: ", error);
-      throw error;
-    }
-
-    mockData[`current-account-${extractedNumbers}`] = {
-      balance: "0",
-      transactions: [],
-    };
-
-    const mockDataString = JSON.stringify(mockData);
-
-    localStorage.setItem("accountData", mockDataString);
-
-    window.location.reload();
   };
 
   useEffect(() => {
     const fetchData = async () => {
-      const timestamp = user?.created_at;
+      const timestamp = user?.created_at ?? "";
       const isWithinLast30Seconds = checkIfWithinLast30Seconds(timestamp);
 
       console.log(
         `The provided timestamp is within the last 30 seconds: ${isWithinLast30Seconds}`,
       );
 
-      if (isWithinLast30Seconds) {
-        await createUserAndAssignRole(user.user_id, user.emails[0].email);
+      if (isWithinLast30Seconds && user) {
+        await createUserAndAssignRole(
+          user.user_id,
+          user.emails?.[0]?.email || "",
+        );
       }
 
-      const tenants = await fetchTenantsForUser(user.user_id);
-      setUserTenants(tenants);
+      if (user) {
+        const tenants = await (
+          await fetch(`../profile/api/tenants?id=${user.user_id}`)
+        ).json();
+        setUserTenants(tenants);
+      }
     };
 
     if (user && session) {
       fetchData();
     }
-  }, []);
+  }, [user, session]);
 
   useEffect(() => {
-    if (selectedUser) {
-      fetchTenantsForUser(selectedUser).then(setUserTenants);
-    }
+    const timestamp = user?.created_at ?? "";
+    const isWithinLast30Seconds = checkIfWithinLast30Seconds(timestamp);
+
+    const fetchUserTenants = async () => {
+      if (!isWithinLast30Seconds) {
+        if (selectedUser) {
+          try {
+            const response = await fetch(
+              `../profile/api/tenants?id=${selectedUser}`,
+            );
+            const data = await response.json();
+
+            console.log("PROFILE USER TENANTS: ", data);
+            setUserTenants(data);
+          } catch (error) {
+            console.error("Error fetching user tenants:", error);
+          }
+        }
+      }
+    };
+
+    fetchUserTenants();
   }, [selectedUser]);
 
   useEffect(() => {
@@ -392,7 +191,6 @@ const Profile: React.FC = () => {
             amount: `-£${parseFloat(transferAmount).toFixed(2)}`,
           });
 
-          // Update local storage
           localStorage.setItem("accountData", JSON.stringify(data));
         }
 
@@ -409,7 +207,6 @@ const Profile: React.FC = () => {
             amount: `+£${parseFloat(transferAmount).toFixed(2)}`,
           });
 
-          // Update local storage
           localStorage.setItem("accountData", JSON.stringify(data));
         }
 
@@ -423,7 +220,6 @@ const Profile: React.FC = () => {
         );
         setWireTransferPermitted(isPermitted);
 
-        // Show success message and close the modal
         notification.success({
           message: "Wire Transfer Successful",
           description: `Outbound transfer of £${transferAmount} to ${selectedUserEmail}.`,
@@ -437,26 +233,6 @@ const Profile: React.FC = () => {
   const handleCloseWireTransfer = () => {
     setShowWireTransfer(false);
     setWireTransferPermitted(null);
-  };
-
-  const handleInviteUserClick = async () => {
-    if (user && currentTenant) {
-      const id = user.user_id;
-      const isPermitted = await permit.check(id, "invite-user", {
-        type: "Account",
-        tenant: currentTenant,
-      });
-
-      if (isPermitted) {
-        setShowInviteUser(true);
-      } else {
-        setShowPermissionDeniedModal(true);
-      }
-    }
-  };
-
-  const handleCloseInviteUser = () => {
-    setShowInviteUser(false);
   };
 
   const handleClosePermissionDenied = () => {
@@ -556,7 +332,7 @@ const Profile: React.FC = () => {
     : sortedTransactions.slice(0, 3);
 
   const handleUserChange = (email: string) => {
-    const user = allUsers.data.find((user) => user.email === email);
+    const user = allUsers.find((user) => user.email === email);
     if (user) {
       setSelectedUser(user.key);
       setSelectedUserEmail(user.email);
@@ -593,7 +369,7 @@ const Profile: React.FC = () => {
         </Title>
         <div className="mb-4">
           <Paragraph>
-            Currently logged in as: {user?.emails[0].email ?? "Unknown User"}
+            Currently logged in as: {user?.emails?.[0]?.email ?? "Unknown User"}
           </Paragraph>
         </div>
         <div className="mb-4">
@@ -629,9 +405,6 @@ const Profile: React.FC = () => {
               <Button type="primary" onClick={handleOpenWireTransferModal}>
                 Send Wire Transfer
               </Button>
-              <Button type="default" onClick={handleInviteUserClick}>
-                Invite User
-              </Button>
               {reviewRequestsPermitted && (
                 <Button type="default" onClick={handleReviewRequestsClick}>
                   Review Wire Transfer Requests
@@ -666,7 +439,7 @@ const Profile: React.FC = () => {
               onChange={handleUserChange}
               placeholder="Select User"
             >
-              {allUsers.data
+              {allUsers
                 .filter((user) => user.email !== currentUserEmail)
                 .map((user) => (
                   <Option key={user.key} value={user.email}>
@@ -722,60 +495,6 @@ const Profile: React.FC = () => {
       </Modal>
 
       <Modal
-        title="Invite User"
-        visible={showInviteUser}
-        onCancel={handleCloseInviteUser}
-        footer={null}
-        width={700}
-        bodyStyle={{ height: "calc(100vh - 400px)", overflowY: "auto" }}
-      >
-        <Select
-          className="w-full mb-4"
-          placeholder="Select User"
-          // Adding the showSearch and filterOption to help debug if there is a typo
-          showSearch
-          filterOption={(input, option) =>
-            option?.props.children.toLowerCase().indexOf(input.toLowerCase()) >=
-            0
-          }
-        >
-          {allUsers.data
-            .filter((user) => user.email !== currentUserEmail)
-            .map((user) => (
-              <Option key={user.key} value={user.email}>
-                {user.email}
-              </Option>
-            ))}
-        </Select>
-        <div className="flex items-center mb-4">
-          <Select
-            className="w-full"
-            onChange={handleRoleChange}
-            value={selectedRole}
-          >
-            {roles.map((role) => (
-              <Option key={role.name} value={role.name}>
-                {role.name}
-              </Option>
-            ))}
-          </Select>
-          <Tooltip
-            title={
-              roles.find((role) => role.name === selectedRole)?.description
-            }
-          >
-            <InfoCircleOutlined className="ml-2" />
-          </Tooltip>
-        </div>
-        <div className="flex justify-end gap-2">
-          <Button onClick={handleCloseInviteUser}>Cancel Invite</Button>
-          <Button type="primary" onClick={handleCloseInviteUser}>
-            Invite
-          </Button>
-        </div>
-      </Modal>
-
-      <Modal
         title="Permission Denied"
         visible={showPermissionDeniedModal}
         onCancel={handleClosePermissionDenied}
@@ -796,7 +515,7 @@ const Profile: React.FC = () => {
       </Modal>
 
       <Modal
-        title="Review Wire Transfer Requests"
+        title="Review User Requests & Wire Transfers"
         visible={showReviewRequests}
         onCancel={handleCloseReviewRequests}
         footer={null}

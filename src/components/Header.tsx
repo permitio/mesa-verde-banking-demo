@@ -27,7 +27,7 @@ const Header = () => {
     handleTenantChange(value);
   };
 
-  console.log("STYTCH USER: ", user);
+  // console.log("STYTCH USER: ", user);
 
   return (
     <header className="flex justify-between items-center p-4 bg-gray-100">
