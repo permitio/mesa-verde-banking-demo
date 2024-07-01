@@ -35,13 +35,9 @@ export async function GET(request: NextRequest) {
 
     let filteredTenants: Tenant[];
 
-    if (userId === "user-test-2bd26c50-8faa-483d-b413-ed045d303ecf") {
-      filteredTenants = tenantsData.filter(tenant => tenant.key !== "default");
-    } else {
-      const tenantIds = userData.associated_tenants.map(tenant => tenant.tenant);
-      filteredTenants = tenantsData.filter(tenant => tenantIds.includes(tenant.key));
-    }
-
+    
+    const tenantIds = userData.associated_tenants.map(tenant => tenant.tenant);
+    filteredTenants = tenantsData.filter(tenant => tenantIds.includes(tenant.key));
     filteredTenants = sortTenantsByDate(filteredTenants);
 
     return NextResponse.json(filteredTenants, { status: 200 });
