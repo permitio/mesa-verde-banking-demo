@@ -11,17 +11,16 @@ export async function POST(request: NextRequest) {
 
   console.log("SERVER USER DATA: ", userId, userEmail)
 
-  const numbers = userEmail.match(/\+(\d+)/);
-  const extractedNumbers = numbers ? numbers[1] : '';
-
-  console.log(numbers, extractedNumbers);
+  const cleanedEmail = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
 
   try {
     // Create Tenant
     const createTenantResponse = await permit.api.tenants.create({
-      key: `current-account-${extractedNumbers}`,
-      name: `Current Account ${extractedNumbers}`,
+      key: cleanedEmail,
+      name: userEmail,
     });
+
+    console.log("Create Tenant Response: ", createTenantResponse);
 
     // Add User to Tenant
     const addUserToTenantResponse = await permit.api.syncUser({
@@ -32,13 +31,13 @@ export async function POST(request: NextRequest) {
     // Assign Role
     const assignRoleResponse = await permit.api.assignRole({
       role: 'AccountOwner',
-      tenant: `current-account-${extractedNumbers}`,
+      tenant: cleanedEmail,
       user: userId,
     });
 
     // Mock Data
     const mockData = {
-      [`current-account-${extractedNumbers}`]: {
+      [cleanedEmail]: {
         balance: '0',
         transactions: [],
       },

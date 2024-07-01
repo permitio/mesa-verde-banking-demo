@@ -82,7 +82,8 @@ const Profile: React.FC = () => {
       );
       const updatedAccountData = { ...currentAccountData, ...data.mockData };
       localStorage.setItem("accountData", JSON.stringify(updatedAccountData));
-      window.location.reload();
+      // Update the state instead of reloading the page
+      setAccountData(updatedAccountData);
     } else {
       const errorData = await response.json();
       console.error("Error:", errorData.error);
@@ -210,6 +211,9 @@ const Profile: React.FC = () => {
           localStorage.setItem("accountData", JSON.stringify(data));
         }
 
+        // Update the state to reflect the changes
+        setAccountData(data);
+
         setShowWireTransfer(false);
         setTransferAmount("");
         setSelectedUser(null);
@@ -271,7 +275,6 @@ const Profile: React.FC = () => {
   useEffect(() => {
     if (currentTenant) {
       const data = JSON.parse(localStorage.getItem("accountData") || "{}");
-      console.log(data);
       setAccountData(data[currentTenant as keyof typeof mockData]);
     }
   }, [currentTenant]);
