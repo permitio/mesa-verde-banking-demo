@@ -23,7 +23,7 @@ services:
     # by default we run opal-client from latest official image
     image: permitio/pdp-v2:latest
     environment:
-      - PDP_API_KEY=permit_key_czV6T01cz0d0xqsB2tOg02DH53guYajwEYGBFPQulmm7sk8AfWU9hms7YrF6rtv8sJYGVQBXd2MsAoxqawtECa
+      - PDP_API_KEY=${PERMIT_API_KEY}
       - PDP_OPA_CLIENT_QUERY_TIMEOUT=60
     ports:
       - "7766:7000"

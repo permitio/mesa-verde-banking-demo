@@ -7,8 +7,8 @@ interface Tenant {
 }
 
 const permit = new Permit({
-  token: process.env.NEXT_PUBLIC_PERMIT_API_KEY,
-  pdp: "http://localhost:7766",
+  token: process.env.PERMIT_API_KEY,
+  pdp: process.env.PERMIT_PDP_HOSTNAME,
 });
 
 export async function GET(request: NextRequest) {

@@ -25,7 +25,7 @@ const { Title, Paragraph } = Typography;
 
 const permit = new Permit({
   token: process.env.NEXT_PUBLIC_PERMIT_API_KEY,
-  pdp: "http://localhost:7766",
+  pdp: process.env.PERMIT_PDP_HOSTNAME,
 });
 
 type Tenant = {
@@ -67,7 +67,7 @@ const Profile: React.FC = () => {
   const currentUserEmail = user?.emails?.[0]?.email ?? "";
 
   const createUserAndAssignRole = async (userId: string, userEmail: string) => {
-    const response = await fetch("../profile/api/syncUser", {
+    const response = await fetch("/profile/api/syncUser", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -107,7 +107,7 @@ const Profile: React.FC = () => {
 
       if (user) {
         const tenants = await (
-          await fetch(`../profile/api/tenants?id=${user.user_id}`)
+          await fetch(`/profile/api/tenants?id=${user.user_id}`)
         ).json();
         setUserTenants(tenants);
       }
@@ -127,7 +127,7 @@ const Profile: React.FC = () => {
         if (selectedUser) {
           try {
             const response = await fetch(
-              `../profile/api/tenants?id=${selectedUser}`,
+              `/profile/api/tenants?id=${selectedUser}`,
             );
             const data = await response.json();
 

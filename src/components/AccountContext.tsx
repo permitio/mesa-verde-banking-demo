@@ -8,7 +8,6 @@ import React, {
   ReactNode,
 } from "react";
 import { useStytchUser } from "@stytch/nextjs";
-import { checkIfWithinLast30Seconds } from "../../lib/checkFirstTimeLogin";
 
 type Tenant = {
   id: string;
@@ -44,7 +43,7 @@ export const AccountProvider = ({ children }: { children: ReactNode }) => {
       try {
         if (user) {
           const getUserTenants = await (
-            await fetch(`../profile/api/tenants?id=${user.user_id}`)
+            await fetch(`/profile/api/tenants?id=${user.user_id}`)
           ).json();
 
           console.log("USER TENANTS: ", getUserTenants);
@@ -54,7 +53,7 @@ export const AccountProvider = ({ children }: { children: ReactNode }) => {
             setCurrentTenant(getUserTenants[0].key); // Use tenant key
           }
 
-          const getAllUsers = await fetch("../profile/api/users");
+          const getAllUsers = await fetch("/profile/api/users");
           if (!getAllUsers.ok) {
             throw new Error("Failed to fetch users");
           }
