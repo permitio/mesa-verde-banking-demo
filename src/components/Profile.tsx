@@ -107,8 +107,11 @@ const Profile: React.FC = () => {
       }
 
       if (user) {
+        const userId = encodeURIComponent(user.user_id);
+        const userEmail = encodeURIComponent(user.emails[0].email);
+
         const tenants = await (
-          await fetch(`/profile/api/tenants?id=${user.user_id}`)
+          await fetch(`/profile/api/tenants?id=${userId}&email=${userEmail}`)
         ).json();
         setUserTenants(tenants);
       }
@@ -126,9 +129,11 @@ const Profile: React.FC = () => {
     const fetchUserTenants = async () => {
       if (!isWithinLast30Seconds) {
         if (selectedUser) {
+          const userId = encodeURIComponent(selectedUser);
+          const userEmail = encodeURIComponent(selectedUserEmail);
           try {
             const response = await fetch(
-              `/profile/api/tenants?id=${selectedUser}`,
+              `/profile/api/tenants?id=${userId}&email=${userEmail}`,
             );
             const data = await response.json();
 

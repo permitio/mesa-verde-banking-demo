@@ -40,10 +40,14 @@ export const AccountProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const getTenants = async () => {
+      console.log("USER TEST: ", user);
+
       try {
         if (user) {
+          const userId = encodeURIComponent(user.user_id);
+          const userEmail = encodeURIComponent(user.emails[0].email);
           const getUserTenants = await (
-            await fetch(`/profile/api/tenants?id=${user.user_id}`)
+            await fetch(`/profile/api/tenants?id=${userId}&email=${userEmail}`)
           ).json();
 
           console.log("USER TENANTS: ", getUserTenants);
