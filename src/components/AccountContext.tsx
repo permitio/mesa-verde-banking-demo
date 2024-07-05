@@ -11,7 +11,7 @@ import { useStytchUser } from "@stytch/nextjs";
 
 type Tenant = {
   id: string;
-  key: string; // Add tenant key
+  key: string;
   name: string;
 };
 
@@ -20,6 +20,7 @@ type AccountContextType = {
   currentTenant: string;
   allUsers: string[];
   handleTenantChange: (tenantKey: string) => void;
+  setIsUserSynced: (synced: boolean) => void;
 };
 
 const AccountContext = createContext<AccountContextType | undefined>(undefined);
@@ -37,13 +38,14 @@ export const AccountProvider = ({ children }: { children: ReactNode }) => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [currentTenant, setCurrentTenant] = useState<string>("");
   const [allUsers, setAllUsers] = useState<string[]>([]);
+  const [isUserSynced, setIsUserSynced] = useState<boolean>(false);
 
   useEffect(() => {
     const getTenants = async () => {
       console.log("USER TEST: ", user);
 
       try {
-        if (user) {
+        if (user && isUserSynced) {
           const userId = encodeURIComponent(user.user_id);
           const userEmail = encodeURIComponent(user.emails[0].email);
           const getUserTenants = await (
@@ -70,7 +72,7 @@ export const AccountProvider = ({ children }: { children: ReactNode }) => {
       }
     };
     getTenants();
-  }, [user]);
+  }, [user, isUserSynced]);
 
   const handleTenantChange = (tenantKey: string) => {
     setCurrentTenant(tenantKey);
@@ -78,7 +80,13 @@ export const AccountProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AccountContext.Provider
-      value={{ tenants, currentTenant, allUsers, handleTenantChange }}
+      value={{
+        tenants,
+        currentTenant,
+        allUsers,
+        handleTenantChange,
+        setIsUserSynced,
+      }}
     >
       {children}
     </AccountContext.Provider>

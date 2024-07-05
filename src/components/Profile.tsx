@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState, useEffect } from "react";
 import { useStytchSession, useStytchUser } from "@stytch/nextjs";
 import { useAccount } from "@/src/components/AccountContext";
@@ -37,7 +35,7 @@ type Tenant = {
 const Profile: React.FC = () => {
   const { user } = useStytchUser();
   const { session } = useStytchSession();
-  const { currentTenant, allUsers } = useAccount();
+  const { currentTenant, allUsers, setIsUserSynced } = useAccount();
   const [showWireTransfer, setShowWireTransfer] = useState(false);
   const [showReviewRequests, setShowReviewRequests] = useState(false);
   const [showRestrictedAccessModal, setShowRestrictedAccessModal] =
@@ -84,6 +82,7 @@ const Profile: React.FC = () => {
       localStorage.setItem("accountData", JSON.stringify(updatedAccountData));
       // Update the state instead of reloading the page
       setAccountData(updatedAccountData);
+      setIsUserSynced(true);
     } else {
       const errorData = await response.json();
       console.error("Error:", errorData.error);
@@ -104,6 +103,8 @@ const Profile: React.FC = () => {
           user.user_id,
           user.emails?.[0]?.email || "",
         );
+      } else {
+        setIsUserSynced(true);
       }
 
       if (user) {
@@ -128,7 +129,8 @@ const Profile: React.FC = () => {
 
     const fetchUserTenants = async () => {
       if (!isWithinLast30Seconds) {
-        if (selectedUser) {
+        if (selectedUser && selectedUserEmail) {
+          // Null check here
           const userId = encodeURIComponent(selectedUser);
           const userEmail = encodeURIComponent(selectedUserEmail);
           try {
@@ -147,7 +149,7 @@ const Profile: React.FC = () => {
     };
 
     fetchUserTenants();
-  }, [selectedUser]);
+  }, [selectedUser, selectedUserEmail]); // Adding selectedUserEmail to dependencies
 
   useEffect(() => {
     if (!localStorage.getItem("accountData")) {
@@ -169,6 +171,7 @@ const Profile: React.FC = () => {
     }
 
     if (user && currentTenant && selectedUserEmail) {
+      // Null check here
       const id = user.user_id;
       const amount = parseFloat(transferAmount);
 
@@ -415,7 +418,7 @@ const Profile: React.FC = () => {
               </Button>
               {reviewRequestsPermitted && (
                 <Button type="default" onClick={handleReviewRequestsClick}>
-                  Review Wire Transfer Requests
+                  Invite Users and Review Requests
                 </Button>
               )}
             </>
