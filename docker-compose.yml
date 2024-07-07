@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  #the demo app
+  app:
+    build: .
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+  # from within the PDP - the data.json file can be found on
+  # http://custom_data_source_server/data.json
+  custom_data_source_server:
+    image: nginx:latest
+    volumes:
+      - "./docker/data:/usr/share/nginx/html:ro"
+    ports:
+      - "8080:80"
+  pdp:
+    # by default we run opal-client from latest official image
+    image: permitio/pdp-v2:latest
+    environment:
+      - PDP_API_KEY=${PERMIT_API_KEY}
+      - PDP_OPA_CLIENT_QUERY_TIMEOUT=60
+    ports:
+      - "7766:7000"
+      - "8181:8181"
+    # depends_on:
+    #   - custom_data_source_server

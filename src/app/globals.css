@@ -1,8 +1,13 @@
+/* styles/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
 * {
   margin: 0;
   padding: 0;
   font-family: Arial, Helvetica, sans-serif;
-  color: rgb(25, 48, 61);
   box-sizing: border-box;
 }
 
@@ -35,7 +40,7 @@ main {
 }
 
 .container {
-  max-width: 650px;
+  max-width: 900px;
   width: 100%;
   padding: 0 16px;
 }

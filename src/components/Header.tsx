@@ -1,78 +1,74 @@
+// src/components/Header.tsx
+
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useStytch, useStytchSession, useStytchUser } from "@stytch/nextjs";
-import { useAccount } from "@/src/components/AccountContext";
+import { useStytch, useStytchUser } from "@stytch/nextjs";
+import { useAccount } from "../../src/components/AccountContext";
+import { Button, Select, Spin } from "antd";
+
+const { Option } = Select;
 
 const Header = () => {
   const stytch = useStytch();
   const { user } = useStytchUser();
-  const { session } = useStytchSession();
-  const { currentAccount, toggleAccount } = useAccount();
+  const { tenants, currentTenant, handleTenantChange } = useAccount();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (tenants.length > 0) {
+      setLoading(false);
+    }
+  }, [tenants]);
+
+  const handleChange = (value: string) => {
+    handleTenantChange(value);
+  };
+
+  console.log("Tenants: ", tenants);
 
   return (
-    <header>
-      <Link className="header" href="/">
-        <Image
-          alt="Barclays"
-          src="/barclays-logo.png"
-          width={150}
-          height={25}
-          priority={true}
-        />
+    <header className="flex justify-between items-center p-4 bg-gray-100">
+      <Link href="/" legacyBehavior>
+        <a>
+          <Image
+            alt="Barclays"
+            src="/barclays-logo.png"
+            width={150}
+            height={25}
+            priority={true}
+          />
+        </a>
       </Link>
-      {session ? (
-        <div className="link-container">
-          <select
-            className="account-switcher"
-            onChange={toggleAccount}
-            value={currentAccount ? "current" : "savings"}
-          >
-            <option value="current">Current Account</option>
-            <option value="savings">Savings Account</option>
-          </select>
-          <button className="primary" onClick={() => stytch.session.revoke()}>
+      {stytch.session && user ? (
+        <div className="flex items-center gap-4">
+          {loading ? (
+            <Spin />
+          ) : (
+            <Select
+              value={currentTenant}
+              onChange={handleChange}
+              className="account-switcher"
+              style={{ width: 200 }}
+            >
+              {tenants.length === 0 ? (
+                <Option value="">No tenants available</Option>
+              ) : (
+                tenants.map((tenant: { key: string; name: string }) => (
+                  <Option key={tenant.key} value={tenant.key}>
+                    {tenant.name}
+                  </Option>
+                ))
+              )}
+            </Select>
+          )}
+          <Button type="primary" onClick={() => stytch.session.revoke()}>
             Log out
-          </button>
+          </Button>
         </div>
       ) : null}
-
-      <style jsx>{`
-        header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 10px 20px;
-          background-color: #f8f9fa;
-        }
-
-        .link-container {
-          display: flex;
-          gap: 10px;
-          align-items: center;
-        }
-
-        .primary {
-          padding: 5px 10px;
-          background-color: #007bff;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-        }
-
-        .primary:hover {
-          background-color: #0056b3;
-        }
-
-        .account-switcher {
-          padding: 5px;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-          cursor: pointer;
-        }
-      `}</style>
     </header>
   );
 };
