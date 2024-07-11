@@ -8,63 +8,36 @@ import Link from "next/link";
 import { useStytch, useStytchUser } from "@stytch/nextjs";
 import { useAccount } from "../../src/components/AccountContext";
 import { Button, Select, Spin } from "antd";
+import Title from "antd/es/typography/Title";
+import permit from "@permitio/permit-js";
 
 const { Option } = Select;
 
 const Header = () => {
   const stytch = useStytch();
   const { user } = useStytchUser();
-  const { tenants, currentTenant, handleTenantChange } = useAccount();
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (tenants.length > 0) {
-      setLoading(false);
-    }
-  }, [tenants]);
+  const logOut = async () => {
+    await permit.elements.logout();
+    stytch.session.revoke();
+    window.location.reload();
+  }
 
-  const handleChange = (value: string) => {
-    handleTenantChange(value);
-  };
-
-  console.log("Tenants: ", tenants);
-
+  
   return (
     <header className="flex justify-between items-center p-4 bg-gray-100">
       <Link href="/" legacyBehavior>
-        <a>
-          <Image
-            alt="Barclays"
-            src="/barclays-logo.png"
-            width={150}
-            height={25}
-            priority={true}
-          />
-        </a>
+        <div className="flex flex-col items-center">
+          <div className="text-xl text-slate-700">MESA VERDE</div>
+          <div className="text-lg  text-slate-600">Bank and Trust</div>
+        </div>
       </Link>
       {stytch.session && user ? (
         <div className="flex items-center gap-4">
-          {loading ? (
-            <Spin />
-          ) : (
-            <Select
-              value={currentTenant}
-              onChange={handleChange}
-              className="account-switcher"
-              style={{ width: 200 }}
-            >
-              {tenants.length === 0 ? (
-                <Option value="">No tenants available</Option>
-              ) : (
-                tenants.map((tenant: { key: string; name: string }) => (
-                  <Option key={tenant.key} value={tenant.key}>
-                    {tenant.name}
-                  </Option>
-                ))
-              )}
-            </Select>
-          )}
-          <Button type="primary" onClick={() => stytch.session.revoke()}>
+          <span className="text-slate-700">
+            {user?.emails?.[0]?.email ?? "Unknown User"}
+          </span>
+          <Button type="primary" onClick={logOut}>
             Log out
           </Button>
         </div>

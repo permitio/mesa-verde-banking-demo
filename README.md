@@ -1,6 +1,4 @@
-![barclays-logo](https://github.com/permitio/barclays-demo-app/assets/109458126/2d5845cb-e5db-4c29-8293-19e6c21cff2e)
-
-# Barclays Bank Demo
+# Mesa Verde Bank Demo
 
 This project showcases a basic banking system using Permit.io for authorization and Stytch for authentication. It demonstrates Role-Based Access Control (RBAC) with multitenancy and Attribute-Based Access Control (ABAC), allowing users to log in, create current accounts, and perform various operations based on their roles and permissions.
 
@@ -8,7 +6,7 @@ Stytch is integrated to handle user authentication, ensuring a secure and seamle
 
 ## Introduction
 
-The Barclays Bank Demo is designed to illustrate a secure and flexible banking system. Users can authenticate via Stytch, create new current accounts, and interact with these accounts based on their assigned roles. This guide provides an overview of the project's features, key components, and usage instructions.
+The Mesa Verde Bank Demo is designed to illustrate a secure and flexible banking system. Users can authenticate via Stytch, create new current accounts, and interact with these accounts based on their assigned roles. This guide provides an overview of the project's features, key components, and usage instructions.
 
 <img width="989" alt="Screenshot 2024-07-01 at 22 58 19" src="https://github.com/permitio/barclays-demo-app/assets/109458126/6dd9d400-3e69-4b2e-b96d-40d42ca2f1ba">
 
@@ -86,3 +84,15 @@ This will launch the whole app, but you still need to configure the policies for
 Please use the below screenshots as per what to copy.
 
 Once you have all of these, everything should work as expected. Happy testing!
+
+
+## Permit Configuration
+Roles:
+AccountOwner
+AccountBeneficiary
+AccountMember
+
+Resources:
+Account - add-members, add-beneficiaries, read
+
+JWKs Config

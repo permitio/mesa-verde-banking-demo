@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@casl/ability": "^6.7.1",
+    "@casl/react": "^4.0.0",
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.5",
     "@mui/material": "^5.15.20",
@@ -25,6 +27,7 @@
     "eslint-config-next": "14.1.1",
     "isomorphic-unfetch": "^4.0.2",
     "next": "13.4.6",
+    "permit-fe-sdk": "^1.4.0",
     "permitio": "^2.4.1",
     "postcss": "^8.4.38",
     "prettier": "^3.2.5",

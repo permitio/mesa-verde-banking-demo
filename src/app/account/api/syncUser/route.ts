@@ -1,10 +1,6 @@
+import permit from '@/lib/authorizer';
 import { NextRequest, NextResponse } from 'next/server';
-import { Permit } from 'permitio';
-
-const permit = new Permit({
-  token: process.env.PERMIT_API_KEY,
-  pdp: process.env.PERMIT_PDP_HOSTNAME,
-});
+import { PermitApiError, TenantRead } from 'permitio';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,8 +19,8 @@ export async function POST(request: NextRequest) {
         key: cleanedEmail,
         name: userEmail,
       });
-    } catch (error) {
-      if (error.response?.status === 409) {
+    } catch (error: Error | any) {
+      if (error?.response?.status === 409) {
         console.warn('Tenant already exists, skipping creation:', cleanedEmail);
       } else {
         console.error('Error creating tenant:', error);

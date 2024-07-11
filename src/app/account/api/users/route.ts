@@ -1,12 +1,9 @@
+import permit from '@/lib/authorizer';
+import { cookies, headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { Permit } from "permitio";
 
-const permit = new Permit({
-  token: process.env.PERMIT_API_KEY,
-  pdp: process.env.PERMIT_PDP_HOSTNAME,
-});
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const users = await permit.api.listUsers();
 
