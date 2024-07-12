@@ -27,7 +27,7 @@ export const authorizeBulkFrontend = async (
   );
 };
 
-export const getUser = async (key: string) => {
+export const getUser = async (key: string): Promise<UserRead | null> => {
   // Fetch user data by userIdKey
   try {
     const user = await permit.api.users.getByKey(key);

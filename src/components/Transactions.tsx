@@ -1,13 +1,7 @@
 import { FC, use, useEffect, useState } from "react";
 import { useAccount } from "./AccountContext";
 import { Skeleton, Table } from "antd";
-
-type Transaction = {
-    id: number;
-    date: string;
-    description: string;
-    amount: string;
-};
+import { Transaction } from "@/lib/Model";
 
 const columns = [
     {

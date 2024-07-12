@@ -6,18 +6,19 @@ import UserManagement from "./UserManagement";
 import WireTrasferModal from "./WireTransferModal";
 import { useAuthorization } from "./AbilityContext";
 import RequestAccess from "./RequestAccess";
+import OperationApprovalList from "./OperationApprovalList";
 
 enum ModalType {
     WIRE_TRANSFER = "WIRE_TRANSFER",
     ACCESS_REQUEST = "ACCESS_REQUEST",
     USER_MANAGEMENT = "USER_MANAGEMENT",
+    APPROVAL_LIST = "APPROVAL_LIST",
 }
 
 const AccountToolbar: FC = () => {
     const [activeModal, setActiveModal] = useState<ModalType | null>(null);
     const { currentTenant, userJwt } = useAccount();
     const { abilities } = useAuthorization();
-
 
     return (
         <div className="gap-4 flex">
@@ -36,8 +37,25 @@ const AccountToolbar: FC = () => {
                     Request Access to Transactions
                 </Button>
             )}
+            {abilities?.APPROVE_WIRE_TRANSFER && (
+                <Button type="primary" onClick={() => (setActiveModal(ModalType.APPROVAL_LIST))}>
+                    Review Wire Transfers
+                </Button>
+            )}
             <Modal
-                title="Review User Requests & Wire Transfers"
+                title="Review Wire Transfers"
+                open={activeModal === ModalType.APPROVAL_LIST}
+                onCancel={() => setActiveModal(null)}
+                footer={null}
+                width={1200}
+                styles={{
+                    body: { height: "calc(100vh - 200px)", overflowY: "auto" }
+                }}
+            >
+                <OperationApprovalList currentTenant={currentTenant} />
+            </Modal>
+            <Modal
+                title="Manage Account Users and Review Requests"
                 open={activeModal === ModalType.USER_MANAGEMENT}
                 onCancel={() => setActiveModal(null)}
                 footer={null}

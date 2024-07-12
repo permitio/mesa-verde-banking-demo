@@ -15,7 +15,7 @@ enum PermissionName {
     LIST_TRANSACTIONS = "LIST_TRANSACTIONS",
     CREATE_WIRE_TRANSFER = "CREATE_WIRE_TRANSFER",
     ADD_MEMBERS = "ADD_MEMBERS",
-
+    APPROVE_WIRE_TRANSFER = "APPROVE_WIRE_TRANSFER",
 }
 
 type Permission = {
@@ -23,6 +23,7 @@ type Permission = {
     statement: {
         action: string;
         resource: string;
+        resourceAttributes?: { [key: string]: any };
     };
 };
 
@@ -38,10 +39,14 @@ const PERMISSIONS: Permission[] = [{
     statement: { action: "list", resource: "Transaction" },
 }, {
     name: PermissionName.CREATE_WIRE_TRANSFER,
-    statement: { action: "create", resource: "Wire_Transfer" },
+    statement: { action: "create", resource: "Wire_Transfer", resourceAttributes: { amount: 100 } },
 }, {
     name: PermissionName.ADD_MEMBERS,
     statement: { action: "add-members", resource: "Account" },
+}, {
+    name: PermissionName.APPROVE_WIRE_TRANSFER,
+    statement: { action: "approve", resource: "Wire_Transfer" },
+
 }];
 
 // Create Context
