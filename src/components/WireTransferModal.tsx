@@ -8,6 +8,7 @@ import { Transaction } from "@/lib/Model";
 import { TenantRead } from "permitio";
 import WireTransferForm from "./WireTransferForm";
 import OperationApprovalRequest from "./OperationApprovalRequest";
+import { useTransactions } from "./TransactionsContext";
 
 type WireTransferModalProps = {
     visible: boolean;
@@ -29,6 +30,7 @@ const WireTrasferModal: FC<WireTransferModalProps> = ({ visible, onCancel }) => 
     const [awaitingTransferKey, setAwaitingTransferKey] = useState<string | null>(null);
     const [transferStatus, setTransferStatus] = useState<TransferStatus | null>(TransferStatus.ACTIVE);
     const [OTPError, setOTPError] = useState<string | null>(null);
+    const { fetchTransactions } = useTransactions();
 
     useEffect(() => {
         setTransferStatus(TransferStatus.ACTIVE);
@@ -79,11 +81,12 @@ const WireTrasferModal: FC<WireTransferModalProps> = ({ visible, onCancel }) => 
                 return;
             }
             setTransferStatus(TransferStatus.SUCCESS);
+            fetchTransactions();
         } catch (error) {
             console.warn("Error sending wire transfer: ", error);
             setTransferStatus(TransferStatus.FAIL);
         }
-    }, [currentTenant]);
+    }, [currentTenant, fetchTransactions]);
 
 
     return (<Modal

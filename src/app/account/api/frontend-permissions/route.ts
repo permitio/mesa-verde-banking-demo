@@ -19,8 +19,6 @@ export async function POST(request: NextRequest) {
       resourcesAndActions,
     );
 
-    console.log(permittedList); // Printing the result of the checks
-
     return NextResponse.json(
       { permittedList },
       {

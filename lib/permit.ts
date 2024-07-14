@@ -39,18 +39,9 @@ export const getUser = async (key: string): Promise<UserRead | null> => {
   }
 };
 
-export const createWireApprovalFlow = async (
-  transaction: Transaction,
+export const getTenantOwner = async (
   tenant: string,
-) => {
-  await permit.api.resourceInstances.create({
-    resource: "Wire_Transfer",
-    key: transaction.id,
-    tenant,
-    attributes: {
-      ...transaction,
-    },
-  });
+): Promise<UserRead | undefined> => {
   const tenantUsers = await permit.api.tenants.listTenantUsers({
     tenantKey: tenant,
   });
@@ -60,6 +51,22 @@ export const createWireApprovalFlow = async (
         tenant === tenant && roles.includes("AccountOwner"),
     ),
   );
+  return tenantOwner;
+};
+
+export const createWireApprovalFlow = async (
+  transaction: Transaction,
+  tenant: string,
+  tenantOwner: UserRead | undefined,
+) => {
+  await permit.api.resourceInstances.create({
+    resource: "Wire_Transfer",
+    key: transaction.id,
+    tenant,
+    attributes: {
+      ...transaction,
+    },
+  });
   await permit.api.roleAssignments.assign({
     role: "_Reviewer_",
     tenant: tenant,
@@ -117,6 +124,39 @@ export const synchronizeLocation = async () => {
   } catch (error) {
     console.error("Error fetching location data", error);
   }
+};
+
+export const createTransactionResource = async (
+  transaction: Transaction,
+  tenant: string,
+  user: string,
+  to: string,
+) => {
+  const resourceInstance = await permit.api.resourceInstances.create({
+    resource: "Transaction",
+    key: transaction.id,
+    tenant,
+    attributes: {
+      ...transaction,
+    },
+  });
+
+  await permit.api.roleAssignments.assign({
+    role: "Sender",
+    tenant,
+    resource_instance: `Transaction:${transaction.id}`,
+    user,
+  });
+
+  const receiverUser = await getTenantOwner(to);
+
+  await permit.api.roleAssignments.assign({
+    role: "Receiver",
+    tenant,
+    resource_instance: `Transaction:${transaction.id}`,
+    user: receiverUser?.key || "",
+  });
+  return resourceInstance;
 };
 
 export default permit;

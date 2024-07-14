@@ -20,7 +20,6 @@ export const auhtenticateOTP = async (
   code: string,
   method_id: string,
 ): Promise<string> => {
-  console.log("Authenticating OTP", code, method_id);
   try {
     await client?.otps.authenticate({
       method_id,

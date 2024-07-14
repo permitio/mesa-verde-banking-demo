@@ -1,13 +1,15 @@
 import { FC, use, useEffect, useState } from "react";
 import { useAccount } from "./AccountContext";
-import { Skeleton, Table } from "antd";
+import { Skeleton, Table, TableColumnProps } from "antd";
 import { Transaction } from "@/lib/Model";
+import { useTransactions } from "./TransactionsContext";
 
 const columns = [
     {
         title: "Date",
         dataIndex: "date",
         key: "date",
+        render: (date: string) => new Date(date).toLocaleString(),
     },
     {
         title: "Description",
@@ -22,33 +24,13 @@ const columns = [
 ];
 
 const Transactions: FC = () => {
-    const { currentTenant } = useAccount();
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        const fetchTransactions = async () => {
-            setError(null);
-            setTransactions([]);
-            const response = await fetch(`/account/api/transactions?account=${currentTenant}`);
-            const status = response.status;
-            if (status === 403) {
-                setError("Unauthorized to view transactions");
-                return;
-            }
-            const data = await response.json();
-            setTransactions(data);
-        }
-        if (currentTenant) {
-            fetchTransactions();
-        }
-    }, [currentTenant]);
+    const { transactions, transactionsError } = useTransactions();
 
     return (
         <>
-            {error && <div className="w-full text-center text-lg">{error}</div>}
-            {!transactions.length && !error && <Skeleton active className="!w-full" />}
-            {!error && transactions.length > 0 &&
+            {transactionsError && <div className="w-full text-center text-lg">{transactionsError}</div>}
+            {!transactions.length && !transactionsError && <Skeleton active className="!w-full" />}
+            {!transactionsError && transactions.length > 0 &&
                 <div>
                     <Table
                         columns={columns}

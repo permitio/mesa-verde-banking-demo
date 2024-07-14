@@ -47,7 +47,6 @@ export const AccountProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const getTenants = async () => {
-      console.log("USER TEST: ", user);
 
       try {
         if (user && !isUserSynced) {
@@ -57,7 +56,6 @@ export const AccountProvider = ({ children }: { children: ReactNode }) => {
             await fetch(`/account/api/tenants`)
           ).json();
 
-          console.log("USER TENANTS: ", getUserTenants);
           setTenants(getUserTenants);
 
           if (getUserTenants.length > 0) {
@@ -69,7 +67,6 @@ export const AccountProvider = ({ children }: { children: ReactNode }) => {
             throw new Error("Failed to fetch users");
           }
           const allUsers = await getAllUsers.json() as UserRead[];
-          console.log("ALL USERS: ", allUsers);
           setAllUsers(allUsers);
           setIsUserSynced(true);
         }

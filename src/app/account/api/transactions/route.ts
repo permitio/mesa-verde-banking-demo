@@ -1,5 +1,9 @@
-import { TransferRequest } from "@/lib/Model";
-import permit, { createWireApprovalFlow } from "@/lib/permit";
+import { Transaction, TransferRequest } from "@/lib/Model";
+import permit, {
+  createTransactionResource,
+  createWireApprovalFlow,
+  getTenantOwner,
+} from "@/lib/permit";
 import loadStytch, { auhtenticateOTP } from "@/lib/stytch";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -72,8 +76,10 @@ export async function POST(request: NextRequest) {
     tenant,
   });
 
+  const tenantOwner = await getTenantOwner(tenant);
+
   if (!transferAllowed) {
-    await createWireApprovalFlow(transaction, tenant);
+    await createWireApprovalFlow(transaction, tenant, tenantOwner);
     return NextResponse.json(
       {
         message: "Wire transfer needs approval",
@@ -84,8 +90,6 @@ export async function POST(request: NextRequest) {
       },
     );
   }
-
-  console.log(OTP, !!OTP, location)
 
   const transactionAllowed = await permit.check(
     {
@@ -103,7 +107,7 @@ export async function POST(request: NextRequest) {
   if (!transactionAllowed) {
     await loadStytch().otps.email.send({
       email: user,
-    })
+    });
     return NextResponse.json(
       {
         message: "Wire transfer needs strong authentication",
@@ -115,14 +119,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const resourceInstance = await permit.api.resourceInstances.create({
-    resource: "Transaction",
-    key: transaction.id,
+  const resourceInstance = await createTransactionResource(
+    transaction,
     tenant,
-    attributes: {
-      ...transaction,
-    },
-  });
+    tenantOwner?.key || "",
+    to,
+  );
 
   return NextResponse.json({
     ...resourceInstance,
@@ -142,5 +144,22 @@ export async function GET(request: NextRequest) {
     return unauthorizedResponse();
   }
 
-  return NextResponse.json(generateRandomArray());
+  const transactionInstances = await permit.getUserPermissions(
+    user,
+    [tenant],
+    [],
+    ["Transaction"],
+  );
+
+
+  const transactions = Object.values(transactionInstances)
+    .map((transaction: any) => ({
+      ...transaction.resource.attributes,
+      amount: `${transaction.roles.includes("Sender") ? "-" : "+"}${transaction.resource.attributes.currency}${transaction.resource.attributes.amount}`,
+    }))
+    .sort((a: Transaction, b: Transaction) => {
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    });
+
+  return NextResponse.json(transactions);
 }

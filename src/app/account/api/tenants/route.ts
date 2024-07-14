@@ -25,8 +25,6 @@ export async function GET(request: NextRequest) {
       (tenant: any) => tenant.roles.includes("AccountOwner"),
     );
 
-    console.log("COMBINED USER DATA: ", userData);
-
     if (!userData || !userData.associated_tenants) {
       console.error(
         "User data is not in the expected format or no associated tenants",
@@ -43,7 +41,6 @@ export async function GET(request: NextRequest) {
       (tenant: any) => tenant.tenant,
     );
     filteredTenants = tenantsData.filter((t) => tenantIds.includes(t.key));
-    console.log(ownedTenant)
     filteredTenants = filteredTenants.sort((t) =>
       t.key === ownedTenant?.tenant ? -1 : 1,
     );
