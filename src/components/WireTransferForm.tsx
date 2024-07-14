@@ -1,4 +1,5 @@
 import { Button, Input, Select } from "antd";
+import FormItemLabel from "antd/es/form/FormItemLabel";
 import { Option } from "antd/es/mentions";
 import { TenantRead } from "permitio";
 import { FC, useCallback, useEffect, useState } from "react";
@@ -68,8 +69,9 @@ const WireTransferForm: FC<WireTransferFormProps> = ({ tenants, handleWireTransf
 
             {strongAuthForm && (
                 <div className="mb-4">
+                    <p className="mb-2">We just emailed you a one time password required to complete this transaction.</p>
                     <Input
-                        placeholder="OTP"
+                        placeholder="Enter password here"
                         type="number"
                         value={otp}
                         onChange={(e) => setOtp(parseInt(e.target.value))}

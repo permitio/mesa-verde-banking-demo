@@ -112,13 +112,13 @@ export const syncUser = async (email: string): Promise<UserRead | null> => {
 export const synchronizeLocation = async () => {
   try {
     const response = await fetch(
-      "https://api.jsonbin.io/v3/b/669424f0acd3cb34a8661ff4",
+      `https://api.jsonbin.io/v3/b/${process.env.JSONBIN_KEY}/latest`,
     );
     const data = await response.json();
 
     await Promise.all(
-      Object.entries(data.record).map(([key, location]) =>
-        permit.api.users.update(key, { attributes: { location } }),
+      Object.entries(data.record).map(([key, country]) =>
+        permit.api.users.update(key, { attributes: { country } }),
       ),
     );
   } catch (error) {

@@ -49,7 +49,7 @@ const AccountToolbar: FC = () => {
                 footer={null}
                 width={1200}
                 styles={{
-                    body: { height: "calc(100vh - 200px)", overflowY: "auto" }
+                    body: { height: "calc(100vh)", overflowY: "auto" }
                 }}
             >
                 <OperationApprovalList currentTenant={currentTenant} />
