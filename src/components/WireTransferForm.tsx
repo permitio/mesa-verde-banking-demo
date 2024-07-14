@@ -1,24 +1,34 @@
 import { Button, Input, Select } from "antd";
 import { Option } from "antd/es/mentions";
 import { TenantRead } from "permitio";
-import { FC, useEffect, useState } from "react";
+import { FC, useCallback, useEffect, useState } from "react";
 
 type WireTransferFormProps = {
-    handleWireTransferSubmit: (account: string, amount: number, description: string) => void;
+    handleWireTransferSubmit: (account: string, amount: number, description: string, otp: number) => Promise<void>;
     tenants: TenantRead[];
     visible: boolean;
+    strongAuthForm: boolean;
 };
 
-const WireTransferForm: FC<WireTransferFormProps> = ({ tenants, handleWireTransferSubmit, visible }) => {
+const WireTransferForm: FC<WireTransferFormProps> = ({ tenants, handleWireTransferSubmit, visible, strongAuthForm }) => {
     const [selectedUser, setSelectedUser] = useState<string>("");
     const [transferAmount, setTransferAmount] = useState<number>(0);
     const [description, setDescription] = useState<string>("");
+    const [otp, setOtp] = useState<number>(0);
+    const [loading, setLoading] = useState<boolean>(false);
 
     useEffect(() => {
         setSelectedUser("");
         setTransferAmount(0);
         setDescription("");
+        setOtp(0);
     }, [visible]);
+
+    const submit = useCallback(async () => {
+        setLoading(true);
+        await handleWireTransferSubmit(selectedUser, transferAmount, description, otp);
+        setLoading(false);
+    }, [selectedUser, transferAmount, description, handleWireTransferSubmit, otp]);
 
     return (
         <>
@@ -56,11 +66,23 @@ const WireTransferForm: FC<WireTransferFormProps> = ({ tenants, handleWireTransf
                 )
             }
 
+            {strongAuthForm && (
+                <div className="mb-4">
+                    <Input
+                        placeholder="OTP"
+                        type="number"
+                        value={otp}
+                        onChange={(e) => setOtp(parseInt(e.target.value))}
+                        className="w-full p-2 border border-gray-300 rounded"
+                    />
+                </div>
+            )}
+
             <div className="flex justify-end gap-2">
                 <Button
                     type="primary"
-                    onClick={() => handleWireTransferSubmit(selectedUser, transferAmount, description)}
-                    disabled={!selectedUser || !transferAmount || !description}
+                    onClick={submit}
+                    disabled={!selectedUser || !transferAmount || !description || loading || (strongAuthForm && !otp)}
                 >
                     Send
                 </Button>

@@ -1,4 +1,4 @@
-import { elementsLogin } from "@/lib/authorizer";
+import { elementsLogin } from "@/lib/permit";
 import { redirect, useSearchParams } from "next/navigation";
 import { NextRequest, NextResponse } from "next/server";
 

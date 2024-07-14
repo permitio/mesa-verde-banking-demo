@@ -9,4 +9,5 @@ export type Transaction = {
 export type TransferRequest = {
   to: string;
   transaction: Transaction;
+  OTP: string;
 };

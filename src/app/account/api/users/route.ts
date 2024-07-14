@@ -1,7 +1,5 @@
-import permit from '@/lib/authorizer';
-import { cookies, headers } from 'next/headers';
-import { NextRequest, NextResponse } from 'next/server';
-
+import permit from "@/lib/permit";
+import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
@@ -10,6 +8,9 @@ export async function GET() {
     return NextResponse.json(users, { status: 200 });
   } catch (error) {
     console.error("Error fetching users through SDK:", error);
-    return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch users" },
+      { status: 500 },
+    );
   }
 }

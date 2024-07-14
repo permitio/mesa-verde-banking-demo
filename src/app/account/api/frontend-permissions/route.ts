@@ -1,4 +1,4 @@
-import { authorizeBulkFrontend } from "@/lib/authorizer";
+import { authorizeBulkFrontend } from "@/lib/permit";
 import { NextRequest, NextResponse } from "next/server";
 import { ActionResourceSchema } from "permit-fe-sdk";
 

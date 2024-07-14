@@ -1,4 +1,4 @@
-import permit from "@/lib/authorizer";
+import permit from "@/lib/permit";
 import { NextResponse } from "next/server";
 
 export async function GET() {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import permit, { getUser, syncUser } from "@/lib/authorizer";
+import permit, { getUser, synchronizeLocation, syncUser } from "@/lib/permit";
 
 interface Tenant {
   key: string;
@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
       await syncUser(userKey);
       userData = await getUser(userKey);
     }
+
+    await synchronizeLocation();
 
     const ownedTenant = userData?.associated_tenants?.find(
       (tenant: any) => tenant.roles.includes("AccountOwner"),

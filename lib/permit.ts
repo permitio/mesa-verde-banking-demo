@@ -1,5 +1,6 @@
 import { ActionResourceSchema } from "permit-fe-sdk";
 import { Permit, UserRead } from "permitio";
+import { Transaction } from "./Model";
 
 const permit = new Permit({
   token: process.env.PERMIT_API_KEY,
@@ -38,6 +39,35 @@ export const getUser = async (key: string): Promise<UserRead | null> => {
   }
 };
 
+export const createWireApprovalFlow = async (
+  transaction: Transaction,
+  tenant: string,
+) => {
+  await permit.api.resourceInstances.create({
+    resource: "Wire_Transfer",
+    key: transaction.id,
+    tenant,
+    attributes: {
+      ...transaction,
+    },
+  });
+  const tenantUsers = await permit.api.tenants.listTenantUsers({
+    tenantKey: tenant,
+  });
+  const tenantOwner = tenantUsers.data.find((user) =>
+    user.associated_tenants?.find(
+      ({ tenant, roles }) =>
+        tenant === tenant && roles.includes("AccountOwner"),
+    ),
+  );
+  await permit.api.roleAssignments.assign({
+    role: "_Reviewer_",
+    tenant: tenant,
+    resource_instance: `Wire_Transfer:${transaction.id}`,
+    user: tenantOwner?.key || "",
+  });
+};
+
 export const syncUser = async (email: string): Promise<UserRead | null> => {
   const cleanedEmail = email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "");
 
@@ -63,13 +93,30 @@ export const syncUser = async (email: string): Promise<UserRead | null> => {
   });
 
   // Assign Role
-  const assignRoleResponse = await permit.api.assignRole({
+  await permit.api.assignRole({
     role: "AccountOwner",
     tenant: cleanedEmail,
     user: email,
   });
 
   return addUserToTenantResponse;
+};
+
+export const synchronizeLocation = async () => {
+  try {
+    const response = await fetch(
+      "https://api.jsonbin.io/v3/b/669424f0acd3cb34a8661ff4",
+    );
+    const data = await response.json();
+
+    await Promise.all(
+      Object.entries(data.record).map(([key, location]) =>
+        permit.api.users.update(key, { attributes: { location } }),
+      ),
+    );
+  } catch (error) {
+    console.error("Error fetching location data", error);
+  }
 };
 
 export default permit;

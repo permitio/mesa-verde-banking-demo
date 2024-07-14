@@ -20,6 +20,7 @@ enum TransferStatus {
     NEED_APPROVAL = "NEED_APPROVAL",
     FAIL = "FAIL",
     NEED_STRONG_AUTH = "NEED_STRONG_AUTH",
+    OTP_ERROR = "OTP_ERROR",
 }
 
 const WireTrasferModal: FC<WireTransferModalProps> = ({ visible, onCancel }) => {
@@ -27,6 +28,7 @@ const WireTrasferModal: FC<WireTransferModalProps> = ({ visible, onCancel }) => 
     const [tenants, setTenants] = useState<TenantRead[]>([]);
     const [awaitingTransferKey, setAwaitingTransferKey] = useState<string | null>(null);
     const [transferStatus, setTransferStatus] = useState<TransferStatus | null>(TransferStatus.ACTIVE);
+    const [OTPError, setOTPError] = useState<string | null>(null);
 
     useEffect(() => {
         setTransferStatus(TransferStatus.ACTIVE);
@@ -41,7 +43,7 @@ const WireTrasferModal: FC<WireTransferModalProps> = ({ visible, onCancel }) => 
         fetchTenants();
     }, [currentTenant]);
 
-    const handleWireTransferSubmit: (to: string, amount: number, description: string) => void = useCallback(async (to, amount, description) => {
+    const handleWireTransferSubmit: (to: string, amount: number, description: string, OTP: number) => Promise<void> = useCallback(async (to, amount, description, OTP) => {
         const transaction: Transaction = {
             id: new Date().getTime() + "-" + Math.floor(Math.random() * 1000),
             date: new Date().toISOString(),
@@ -54,7 +56,8 @@ const WireTrasferModal: FC<WireTransferModalProps> = ({ visible, onCancel }) => 
                 method: "POST",
                 body: JSON.stringify({
                     to,
-                    transaction
+                    transaction,
+                    OTP: OTP,
                 }),
             });
             const status = response.status;
@@ -66,6 +69,10 @@ const WireTrasferModal: FC<WireTransferModalProps> = ({ visible, onCancel }) => 
             } else if (status === 403 && data.message === "Wire transfer needs strong authentication") {
                 setAwaitingTransferKey(data.transfer);
                 setTransferStatus(TransferStatus.NEED_STRONG_AUTH);
+                return;
+            } else if (status === 403 && data.message.indexOf("OTP Failed: ") === 0) {
+                setTransferStatus(TransferStatus.OTP_ERROR);
+                setOTPError(data.message);
                 return;
             } else if (status !== 200) {
                 setTransferStatus(TransferStatus.FAIL);
@@ -90,17 +97,17 @@ const WireTrasferModal: FC<WireTransferModalProps> = ({ visible, onCancel }) => 
         {!tenants.length && <Skeleton active className="!w-full" />}
         {tenants.length > 0 &&
             <>
-                {transferStatus === TransferStatus.ACTIVE &&
-                    <WireTransferForm tenants={tenants} handleWireTransferSubmit={handleWireTransferSubmit} visible={visible} />
+                {(transferStatus === TransferStatus.ACTIVE || transferStatus === TransferStatus.NEED_STRONG_AUTH) &&
+                    <WireTransferForm tenants={tenants} handleWireTransferSubmit={handleWireTransferSubmit} visible={visible} strongAuthForm={transferStatus === TransferStatus.NEED_STRONG_AUTH} />
                 }
                 {transferStatus === TransferStatus.NEED_APPROVAL && awaitingTransferKey &&
                     <OperationApprovalRequest transferKey={awaitingTransferKey} currentTenant={currentTenant} />
                 }
-                {transferStatus === TransferStatus.NEED_STRONG_AUTH &&
-                    <>Strong your authentication</>
-                }
                 {transferStatus === TransferStatus.SUCCESS &&
                     <Alert message="Transfer Successful" type="success" />
+                }
+                {transferStatus === TransferStatus.OTP_ERROR &&
+                    <Alert message={OTPError} type="warning" />
                 }
                 {transferStatus === TransferStatus.FAIL &&
                     <Alert message="Transfer Failed" type="error" />

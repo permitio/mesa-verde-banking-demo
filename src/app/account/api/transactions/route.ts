@@ -1,5 +1,6 @@
 import { TransferRequest } from "@/lib/Model";
-import permit from "@/lib/authorizer";
+import permit, { createWireApprovalFlow } from "@/lib/permit";
+import loadStytch, { auhtenticateOTP } from "@/lib/stytch";
 import { NextRequest, NextResponse } from "next/server";
 
 const unauthorizedResponse = () => {
@@ -49,46 +50,63 @@ function generateRandomArray(): any[] {
 
 export async function POST(request: NextRequest) {
   const user = request.headers.get("x-user-key") || "";
+  const email_id = request.headers.get("x-user-email-id") || "";
+  const location = request.headers.get("x-user-location") || "";
   const { searchParams } = new URL(request.url);
   const tenant = searchParams.get("tenant") || "";
-  const { to, transaction } = (await request.json()) as TransferRequest;
+  const { to, OTP, transaction } = (await request.json()) as TransferRequest;
 
-  const allowed = await permit.check(user, "create", {
+  if (OTP) {
+    const error = await auhtenticateOTP(OTP, email_id);
+    if (error) {
+      return NextResponse.json(
+        { message: `OTP Failed: ${error}` },
+        { status: 403 },
+      );
+    }
+  }
+
+  const transferAllowed = await permit.check(user, "create", {
     type: "Wire_Transfer",
     attributes: { ...transaction },
     tenant,
   });
 
-  if (!allowed) {
-    await permit.api.resourceInstances.create({
-      resource: "Wire_Transfer",
-      key: transaction.id,
-      tenant,
-      attributes: {
-        ...transaction,
-      },
-    });
-    const tenantUsers = await permit.api.tenants.listTenantUsers({
-      tenantKey: tenant,
-    });
-    const tenantOwner = tenantUsers.data.find((user) =>
-      user.associated_tenants?.find(
-        ({ tenant, roles }) =>
-          tenant === tenant && roles.includes("AccountOwner"),
-      ),
-    );
-    const wireTransferResource = await permit.api.resources.getByKey("Wire_Transfer");
-    const resourceRoles = wireTransferResource?.roles as any;
-    const approvedRole: string = resourceRoles?.["_Reviewer_"]?.id
-    await permit.api.roleAssignments.assign({
-      role: approvedRole,
-      tenant: tenant,
-      resource_instance: `Wire_Transfer:${transaction.id}`,
-      user: tenantOwner?.key || "",
-    });
+  if (!transferAllowed) {
+    await createWireApprovalFlow(transaction, tenant);
     return NextResponse.json(
       {
         message: "Wire transfer needs approval",
+        transfer: transaction.id,
+      },
+      {
+        status: 403,
+      },
+    );
+  }
+
+  console.log(OTP, !!OTP, location)
+
+  const transactionAllowed = await permit.check(
+    {
+      key: user,
+      attributes: { strongAuth: !!OTP, location },
+    },
+    "create",
+    {
+      type: "Transaction",
+      attributes: { ...transaction },
+      tenant,
+    },
+  );
+
+  if (!transactionAllowed) {
+    await loadStytch().otps.email.send({
+      email: user,
+    })
+    return NextResponse.json(
+      {
+        message: "Wire transfer needs strong authentication",
         transfer: transaction.id,
       },
       {
