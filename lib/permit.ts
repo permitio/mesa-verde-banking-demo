@@ -4,7 +4,7 @@ import { Transaction } from "./Model";
 
 const permit = new Permit({
   token: process.env.PERMIT_API_KEY,
-  pdp: process.env.PERMIT_PDP_HOSTNAME,
+  pdp: process.env.PDP_URL,
 });
 
 export const elementsLogin = async (userId: string, tenantId: string) => {
