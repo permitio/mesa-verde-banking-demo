@@ -18,11 +18,8 @@ const unauthorizedResponse = () => {
   );
 };
 
-function generateRandomArray(): any[] {
-  const randomArray = [];
-  const length = Math.floor(Math.random() * 10) + 1;
-  for (let i = 0; i < length; i++) {
-    const randomId = Math.floor(Math.random() * 1000);
+const generateRandomTransaction = () => {
+  const randomId = Math.floor(Math.random() * 1000);
     const randomDate = new Date().toISOString().split("T")[0];
     const transactionTypes = [
       "Deposit",
@@ -42,12 +39,19 @@ function generateRandomArray(): any[] {
       Math.random() < 0.5
         ? "-£" + (Math.random() * 100).toFixed(2)
         : "+£" + (Math.random() * 100).toFixed(2);
-    randomArray.push({
+    return {
       id: randomId,
       date: randomDate,
       description: randomDescription,
       amount: randomAmount,
-    });
+    };
+}
+
+function generateRandomArray(): any[] {
+  const randomArray = [];
+  const length = Math.floor(Math.random() * 10) + 1;
+  for (let i = 0; i < length; i++) {
+    randomArray.push(generateRandomTransaction());
   }
   return randomArray;
 }
@@ -161,5 +165,9 @@ export async function GET(request: NextRequest) {
       return new Date(b.date).getTime() - new Date(a.date).getTime();
     });
 
-  return NextResponse.json(transactions);
+  if (transactions.length === 0) {
+    return [generateRandomTransaction()];
+  }
+
+  return NextResponse.json([...transactions, generateRandomTransaction()]);
 }

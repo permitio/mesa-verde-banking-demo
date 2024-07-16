@@ -52,7 +52,7 @@ const AccountToolbar: FC = () => {
                     body: { height: "calc(100vh)", overflowY: "auto" }
                 }}
             >
-                <OperationApprovalList currentTenant={currentTenant} />
+                {activeModal === ModalType.APPROVAL_LIST && <OperationApprovalList currentTenant={currentTenant} />}
             </Modal>
             <Modal
                 title="Manage Account Users and Review Requests"
