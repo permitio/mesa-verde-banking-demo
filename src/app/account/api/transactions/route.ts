@@ -155,7 +155,6 @@ export async function GET(request: NextRequest) {
     ["Transaction"],
   );
 
-
   const transactions = Object.values(transactionInstances)
     .map((transaction: any) => ({
       ...transaction.resource.attributes,
@@ -166,7 +165,7 @@ export async function GET(request: NextRequest) {
     });
 
   if (transactions.length === 0) {
-    return [generateRandomTransaction()];
+    return NextResponse.json([generateRandomTransaction()]);
   }
 
   return NextResponse.json([...transactions, generateRandomTransaction()]);

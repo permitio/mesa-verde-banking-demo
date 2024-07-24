@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
 
     await synchronizeLocation();
 
-    const ownedTenant = userData?.associated_tenants?.find(
-      (tenant: any) => tenant.roles.includes("AccountOwner"),
+    const ownedTenant = userData?.associated_tenants?.find((tenant: any) =>
+      tenant.roles.includes("AccountOwner"),
     );
 
     if (!userData || !userData.associated_tenants) {
@@ -37,13 +37,17 @@ export async function GET(request: NextRequest) {
 
     let filteredTenants: Tenant[];
 
-    const tenantIds = userData.associated_tenants.map(
-      (tenant: any) => tenant.tenant,
-    );
-    filteredTenants = tenantsData.filter((t) => tenantIds.includes(t.key));
-    filteredTenants = filteredTenants.sort((t) =>
-      t.key === ownedTenant?.tenant ? -1 : 1,
-    );
+    const tenantIds = userData.associated_tenants
+      .filter(
+        (tenant: any) =>
+          tenant.roles.includes("AccountBeneficiary") ||
+          tenant.roles.includes("AccountOwner") ||
+          tenant.roles.includes("AccountMember"),
+      )
+      .map((tenant: any) => tenant.tenant);
+    filteredTenants = tenantsData
+      .filter((t) => tenantIds.includes(t.key))
+      .sort((t) => (t.key === ownedTenant?.tenant ? -1 : 1));
 
     return NextResponse.json(filteredTenants, { status: 200 });
   } catch (error) {
