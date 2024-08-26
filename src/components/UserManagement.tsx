@@ -1,15 +1,13 @@
-// src/components/RequestAccess.tsx
+// src/components/UserManagement.tsx
 
-import React, { useEffect, useState } from "react";
+import React, { FC, useEffect, useState } from "react";
 import permit, { LoginMethod } from "@permitio/permit-js";
 
-interface RequestAccessProps {
+type UserManagementProps = {
   currentTenant: string;
-}
+};
 
-const RequestAccess: React.FC<RequestAccessProps> = ({
-  currentTenant,
-}) => {
+const UserManagement: FC<UserManagementProps> = ({ currentTenant }) => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -38,13 +36,15 @@ const RequestAccess: React.FC<RequestAccessProps> = ({
       {error && <div>{error}</div>}
       {!error && !loading && (
         <iframe
-          title="Permit Element wire-transfer-request"
-          src={`https://embed.permit.io/wire-transfer-request?envId=${process.env.NEXT_PUBLIC_ENV_ID}&darkMode=false&tenantKey=${currentTenant}`}
-          className="w-full h-full"
+          title="Account Members Management"
+          src={`https://embed.permit.io/account-members-management?envId=${process.env.NEXT_PUBLIC_ENV_ID}&darkMode=false`}
+          width="100%"
+          height="100%"
+          style={{ border: "none" }}
         />
       )}
     </>
   );
 };
 
-export default RequestAccess;
+export default UserManagement;
