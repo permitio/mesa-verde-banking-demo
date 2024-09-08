@@ -130,7 +130,7 @@ export const createTransactionResource = async (
   transaction: Transaction,
   tenant: string,
   user: string,
-  to: string,
+  to?: string,
 ) => {
   const resourceInstance = await permit.api.resourceInstances.create({
     resource: "Transaction",
@@ -148,7 +148,7 @@ export const createTransactionResource = async (
     user,
   });
 
-  const receiverUser = await getTenantOwner(to);
+  const receiverUser = await getTenantOwner(to || transaction.to || "");
 
   await permit.api.roleAssignments.assign({
     role: "Receiver",
