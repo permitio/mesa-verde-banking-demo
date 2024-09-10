@@ -148,11 +148,10 @@ export async function GET(request: NextRequest) {
     return unauthorizedResponse();
   }
 
-  console.log("Fetching transactions for user", user);
-  console.log("Fetching transactions for tenant", tenant);
+  const { key } = (await getTenantOwner(tenant)) || { key: "" };
 
   const transactionInstances = await permit.getUserPermissions(
-    user,
+    key,
     [tenant],
     [],
     ["Transaction"],
