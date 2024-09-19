@@ -4,6 +4,7 @@ export type Transaction = {
   description: string;
   amount: number;
   currency: string;
+  to?: string;
 };
 
 export type TransferRequest = {

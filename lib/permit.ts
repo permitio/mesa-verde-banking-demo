@@ -116,10 +116,15 @@ export const synchronizeLocation = async () => {
     );
     const data = await response.json();
 
+    const envUsers = await permit.api.users.list();
+    const users = envUsers.data.map((user) => user.key);
+
     await Promise.all(
-      Object.entries(data.record).map(([key, country]) =>
-        permit.api.users.update(key, { attributes: { country } }),
-      ),
+      Object.entries(data.record)
+        .filter(([key]) => users.includes(key))
+        .map(([key, country]) =>
+          permit.api.users.update(key, { attributes: { country } }),
+        ),
     );
   } catch (error) {
     console.error("Error fetching location data", error);
@@ -130,7 +135,7 @@ export const createTransactionResource = async (
   transaction: Transaction,
   tenant: string,
   user: string,
-  to: string,
+  to?: string,
 ) => {
   const resourceInstance = await permit.api.resourceInstances.create({
     resource: "Transaction",
@@ -148,7 +153,7 @@ export const createTransactionResource = async (
     user,
   });
 
-  const receiverUser = await getTenantOwner(to);
+  const receiverUser = await getTenantOwner(to || transaction.to || "");
 
   await permit.api.roleAssignments.assign({
     role: "Receiver",

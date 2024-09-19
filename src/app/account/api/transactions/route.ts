@@ -20,32 +20,32 @@ const unauthorizedResponse = () => {
 
 const generateRandomTransaction = () => {
   const randomId = Math.floor(Math.random() * 1000);
-    const randomDate = new Date().toISOString().split("T")[0];
-    const transactionTypes = [
-      "Deposit",
-      "Withdrawal",
-      "Transfer",
-      "Payment",
-      "Purchase",
-      "Refund",
-      "Interest",
-      "Fee",
-      "Salary",
-      "Bonus",
-    ];
-    const randomDescription =
-      transactionTypes[Math.floor(Math.random() * transactionTypes.length)];
-    const randomAmount =
-      Math.random() < 0.5
-        ? "-£" + (Math.random() * 100).toFixed(2)
-        : "+£" + (Math.random() * 100).toFixed(2);
-    return {
-      id: randomId,
-      date: randomDate,
-      description: randomDescription,
-      amount: randomAmount,
-    };
-}
+  const randomDate = new Date().toISOString().split("T")[0];
+  const transactionTypes = [
+    "Deposit",
+    "Withdrawal",
+    "Transfer",
+    "Payment",
+    "Purchase",
+    "Refund",
+    "Interest",
+    "Fee",
+    "Salary",
+    "Bonus",
+  ];
+  const randomDescription =
+    transactionTypes[Math.floor(Math.random() * transactionTypes.length)];
+  const randomAmount =
+    Math.random() < 0.5
+      ? "-£" + (Math.random() * 100).toFixed(2)
+      : "+£" + (Math.random() * 100).toFixed(2);
+  return {
+    id: randomId,
+    date: randomDate,
+    description: randomDescription,
+    amount: randomAmount,
+  };
+};
 
 function generateRandomArray(): any[] {
   const randomArray = [];
@@ -76,14 +76,14 @@ export async function POST(request: NextRequest) {
 
   const transferAllowed = await permit.check(user, "create", {
     type: "Wire_Transfer",
-    attributes: { ...transaction },
+    attributes: { ...transaction, to },
     tenant,
   });
 
   const tenantOwner = await getTenantOwner(tenant);
 
   if (!transferAllowed) {
-    await createWireApprovalFlow(transaction, tenant, tenantOwner);
+    await createWireApprovalFlow({ ...transaction, to }, tenant, tenantOwner);
     return NextResponse.json(
       {
         message: "Wire transfer needs approval",
@@ -148,8 +148,10 @@ export async function GET(request: NextRequest) {
     return unauthorizedResponse();
   }
 
+  const { key } = (await getTenantOwner(tenant)) || { key: "" };
+
   const transactionInstances = await permit.getUserPermissions(
-    user,
+    key,
     [tenant],
     [],
     ["Transaction"],
