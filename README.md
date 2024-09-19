@@ -73,21 +73,11 @@ Then, you need to create a (free) account with the following:
 
 1. To configure the initial Authorization schema in Permit, use the following terraform commands that will apply them in your newly created Permit environment:
    ```bash
-   terraform init
-   terraform plan
-   terraform apply
+   npm run setup
    ```
+
 2. After running the command, you should see the following Policy configured in the Permit [Policy Editor](https://app.permit.io/policy-editor):
-   ![Policy](TBD)
-
-### Configure the Permit Elements
-
-1. To configure the Permit Elements, run the following command:
-   ```bash
-   npm run configure-permit-elements
-   ```
-2. After running the command, you should see the following Permit Elements configured in the Permit [Elements Editor](https://app.permit.io/elements):
-   ![Elements](TBD)
+   ![image](https://github.com/user-attachments/assets/272a9172-f266-4eae-90e2-b78da6730775)
 
 ### Start the application
 
