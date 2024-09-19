@@ -9,13 +9,13 @@ You can experience the demo live [mesa-verde-banking-demo.railway.app](https://m
 The demo includes the following key features:
 
 - **Multi-Tenancy Hierarchical Role-Based Access Control (RBAC):** When a new user created they are assigned to a tenant and a role within that tenant, such as Account Owner or Read Only Member.
+- **Secure Collaboration:** Users can manage benficiaries and account member using Permit.io's user management components.
+- **Dynamic UI Feature Toggling:** The user interface components vary based on the user's role and account ownership status.
 - **Fine-Grained Wire Transfer Permissions:** Wire transfers are authorized based on multiple factors flow, including user roles, relationships, user location, and transaction limits.
    - **Use External Data for Authorization:** The system uses external data sources to determine the user's location and apply location-based authorization.
    - **Feedback Loop of Authentication and Authorization:** Users that are not authorized for a specific action can leverage their permissions by stregthening their authentication.
    - **Transaction Approval Flow:** Account owners can approve wire transfers that made by other users.
 - **Fine-Grained Relationship-Based Access Control (ReBAC):** Users are getting access to transactions via their relationship with the particular account and transaction.
-- **Dynamic UI Feature Toggling:** The user interface components vary based on the user's role and account ownership status.
-- **Secure Collaboration:** Users can manage benficiaries and account member using Permit.io's user management components.
 - **Access Requests:** Users can request elevated access to specific accounts via ready-made access request components.
 
 To learn more about the authorization models of this application, [Read the Docs](TBD)
