@@ -4,6 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "setup:attributes": "export SETUP_STEP=0 && node setup",
+    "setup:schema": "terraform init && terraform plan && terraform apply",
+    "setup:elements": "export SETUP_STEP=1 && node setup",
+    "setup": "npm run setup:attributes && npm run setup:schema && npm run setup:elements",
+    "setup:clean": "rm -rf terraform.tfstate terraform.tfstate.backup .terraform .terraform.lock.hcl",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

@@ -1,98 +1,96 @@
 # Mesa Verde Bank Demo
 
-This project showcases a basic banking system using Permit.io for authorization and Stytch for authentication. It demonstrates Role-Based Access Control (RBAC) with multitenancy and Attribute-Based Access Control (ABAC), allowing users to log in, create current accounts, and perform various operations based on their roles and permissions.
+This project showcasing an advanced fine-grained authorization demo in a banking system using Permit.io Authorization as a Service.
 
-Stytch is integrated to handle user authentication, ensuring a secure and seamless login process. When a user logs in, Stytch creates a secure session, allowing them to interact with the banking system.
+The application is written in Next.js and uses Permit.io's Decision Engine to enforce fine-grained authorization policies. The application also uses Stytch for user authentication and JSONBin.io to store external data for location-based authorization.
 
-## Introduction
-
-The Mesa Verde Bank Demo is designed to illustrate a secure and flexible banking system. Users can authenticate via Stytch, create new current accounts, and interact with these accounts based on their assigned roles. This guide provides an overview of the project's features, key components, and usage instructions.
-
-<img width="989" alt="Screenshot 2024-07-01 at 22 58 19" src="https://github.com/permitio/barclays-demo-app/assets/109458126/6dd9d400-3e69-4b2e-b96d-40d42ca2f1ba">
-
-## Features Overview
+You can experience the demo live [mesa-verde-banking-demo.railway.app](https://mesa-verde-banking-demo.railway.app).
 
 The demo includes the following key features:
 
-- **User Authentication:** Secure login using Stytch, which creates a session for the user.
-- **Current Account Creation:** Users can create new current accounts, each representing a tenant in the system.
-- **Role-Based Access Control (RBAC):** Users are assigned roles such as Account Owner or Read Only Member, determining their access and permissions.
-- **Attribute-Based Access Control (ABAC):** Specific actions, such as transaction limits, are controlled based on user attributes and roles.
+- **Multi-Tenancy Hierarchical Role-Based Access Control (RBAC):** When a new user created they are assigned to a tenant and a role within that tenant, such as Account Owner or Read Only Member.
+- **Fine-Grained Wire Transfer Permissions:** Wire transfers are authorized based on multiple factors flow, including user roles, relationships, user location, and transaction limits.
+   - **Use External Data for Authorization:** The system uses external data sources to determine the user's location and apply location-based authorization.
+   - **Feedback Loop of Authentication and Authorization:** Users that are not authorized for a specific action can leverage their permissions by stregthening their authentication.
+   - **Transaction Approval Flow:** Account owners can approve wire transfers that made by other users.
+- **Fine-Grained Relationship-Based Access Control (ReBAC):** Users are getting access to transactions via their relationship with the particular account and transaction.
+- **Dynamic UI Feature Toggling:** The user interface components vary based on the user's role and account ownership status.
+- **Secure Collaboration:** Users can manage benficiaries and account member using Permit.io's user management components.
+- **Access Requests:** Users can request elevated access to specific accounts via ready-made access request components.
 
-### User Synchronization and Role Assignment
+To learn more about the authorization models of this application, [Read the Docs](TBD)
 
-When a new user is created, they are automatically synced into Permit.io. Each user is assigned a role within a tenant, such as Account Owner or Read Only Member. Users can have multiple roles across different accounts, enabling a flexible multi-tenancy setup.
+For further reading, you can also check the following blogs:
 
-<img width="336" alt="Screenshot 2024-07-01 at 22 58 30" src="https://github.com/permitio/barclays-demo-app/assets/109458126/ce01fa0e-40e8-4b2f-bee7-60ee25adaaad">
-
-### Dynamic UI Rendering
-
-The user interface components vary based on the user's role and account ownership status. This dynamic rendering ensures that users only see elements relevant to their permissions.
-
-### Access Requests and Approval Workflow
-
-Users can request elevated access to specific accounts via an access request element. This access request is one of many Permit.io elements that allow us to safely delegate authorization functionality to end users. Account owners can approve these requests, granting the user an Account Access Member role with elevated permissions. This workflow ensures controlled and secure access management.
-
-#### Inviting a user into the current account as a specific role
-<img width="696" alt="Screenshot 2024-07-01 at 23 01 53" src="https://github.com/permitio/barclays-demo-app/assets/109458126/630cbe4b-f3b9-4bff-80ec-e11c4162e433">
-
-#### User successfully invited:
-<img width="678" alt="Screenshot 2024-07-01 at 23 02 09" src="https://github.com/permitio/barclays-demo-app/assets/109458126/e89201f8-763f-493a-85a1-643d1d7c3e19">
-
-### Transaction Management
-
-- Account Owners: Can perform wire transfers without restrictions.
-- Account Access Members: Can perform wire transfers up to 1000 GBP, showcasing simple ABAC controls.
-  Permission Controls
-
-<img width="608" alt="Screenshot 2024-07-01 at 22 59 17" src="https://github.com/permitio/barclays-demo-app/assets/109458126/4c15f58a-d00d-49cc-afe7-249b9ce9f7bc">
-
-- Read Only Members: Can view a limited set of data for each current account.
-
-The system enforces transaction limits and other permissions based on user roles and attributes, ensuring secure and compliant operations.
+- [What Really Happens When The Bank’s Server Authorizes Your Wire Transfer Request? (TBD)](#)
+- [The Feedback Loop of Authentication and Authorization (TBD)](#)
+- [How to Add Authorization to Stytch Authentication (TBD)](#)
+- [Fine-Grained Authorization with Multi-Tenancy RBAC (TBD)](#)
 
 ## Running the application
 
-We have dockerized the whole project for ease of use. But before we run the `docker-compose` we need to setup a `.env.local` file.
+To run a local version of the application, follow the steps below:
 
-You will need to make an account with the following:
+### Prerequisites
 
-1. [Stytch](https://stytch.com/) - to get the `STYTCH_PROJECT_ENV`, `STYTCH_PROJECT_ID`, `STYTCH_SECRET` & `NEXT_PUBLIC_STYTCH_PUBLIC_TOKEN`.
-2. [Permit](https://permit.io/) - to get the `PERMIT_API_KEY`, `NEXT_PUBLIC_PROJ_ID`, `NEXT_PUBLIC_ENV_ID` & `PERMIT_PDP_HOSTNAME`
+First, you need to have the following tools installed:
 
-Here is the `.env.local` structure:
+- [Node.js](https://nodejs.org/en/download/)
+- [Docker](https://docs.docker.com/get-docker/)
+- [Terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli)
+- [ngrok](https://ngrok.com/download) - to expose the local server to the internet for access request webhooks
 
-```bash
-STYTCH_PROJECT_ENV=
-STYTCH_PROJECT_ID=
-STYTCH_SECRET=
-NEXT_PUBLIC_STYTCH_PUBLIC_TOKEN=
-NEXT_PUBLIC_PERMIT_API_KEY=
-PERMIT_API_KEY=
-NEXT_PUBLIC_PROJ_ID=
-NEXT_PUBLIC_ENV_ID=
-PERMIT_PDP_HOSTNAME="http://localhost:7766"
-```
+Then, you need to make an account with the following:
 
-Once you have all of these, just run:
+- [Stytch](https://stytch.com/dashboard) - to authenticate users and ensure strong authentication with OTP
+- [Permit.io](https://app.permit.io/) - to manage fine-grained authorization and access control
+  - To run the project locally, it is recommended to have a fresh Permit environment without any configured policies. To create a new environment, follow the instructions [here](https://docs.permit.io/manage-your-account/projects-and-env/#environments)
+- [JSONBin.io](https://jsonbin.io/) - to store the external data for location-based authorization
+
+### Clone the repository and install dependencies
+
+1. Clone the repository:
+   ```bash
+   git clone git@github.com:permitio/mesa-verde-banking-demo.git
+   ```
+2. Run the following commands to install the dependencies:
+   ```bash
+   cd mesa-verde-banking-demo
+   npm install
+   ```
+
+### Setup the environment variables
+
+1. Copy the `.env.example` file to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+2. Fill in the environment variables in the `.env` file with the values from your Stytch, Permit.io, and JSONBin.io accounts.
+
+### Configure the Authorization Policies
+
+1. To configure the initial Authorization schema in Permit, use the following terraform commands that will apply them in your newly created Permit environment:
+   ```bash
+   terraform init
+   terraform plan
+   terraform apply
+   ```
+2. After running the command, you should see the following Policy configured in the Permit [Policy Editor](https://app.permit.io/policy-editor):
+   ![Policy](TBD)
+
+### Configure the Permit Elements
+
+1. To configure the Permit Elements, run the following command:
+   ```bash
+   npm run configure-permit-elements
+   ```
+2. After running the command, you should see the following Permit Elements configured in the Permit [Elements Editor](https://app.permit.io/elements):
+   ![Elements](TBD)
+
+### Start the application
+
+To simply run the application, just use the following command that will start the Next.js server and run all the necessary services in Docker:
 
 ```bash
 docker-compose up --build
 ```
-
-This will launch the whole app, but you still need to configure the policies for for the different roles.
-Please use the below screenshots as per what to copy.
-
-Once you have all of these, everything should work as expected. Happy testing!
-
-
-## Permit Configuration
-Roles:
-AccountOwner
-AccountBeneficiary
-AccountMember
-
-Resources:
-Account - add-members, add-beneficiaries, read
-
-JWKs Config

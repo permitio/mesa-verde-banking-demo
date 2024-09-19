@@ -38,12 +38,14 @@ const WireTransferForm: FC<WireTransferFormProps> = ({ tenants, handleWireTransf
                 onChange={(value) => setSelectedUser(value)}
                 placeholder="Select Account"
             >
-                {tenants
+                {tenants.length === 0 ? (
+                    <Option value="">No tenants available</Option>
+                ) : (tenants
                     .map(({ key, name }) => (
                         <Option key={key} value={key}>
                             {name}
                         </Option>
-                    ))}
+                    )))}
             </Select>
 
             {

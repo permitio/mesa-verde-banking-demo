@@ -12,6 +12,10 @@ export const POST = async (request: NextRequest) => {
   console.log("Webhook request", request);
 
   const secret = authorizationHeader.split(" ")[1];
+  console.log("Webhook secret", secret);
+  console.log("Webhook env secret", process.env.WEBHOOK_SECRET);
+  console.log("Webhook data", authorizationHeader);
+  console.log("Webhook headers", request.headers);
 
   if (secret !== process.env.WEBHOOK_SECRET) {
     return NextResponse.json("Unauthorized", { status: 401 });

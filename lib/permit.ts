@@ -116,10 +116,15 @@ export const synchronizeLocation = async () => {
     );
     const data = await response.json();
 
+    const envUsers = await permit.api.users.list();
+    const users = envUsers.data.map((user) => user.key);
+
     await Promise.all(
-      Object.entries(data.record).map(([key, country]) =>
-        permit.api.users.update(key, { attributes: { country } }),
-      ),
+      Object.entries(data.record)
+        .filter(([key]) => users.includes(key))
+        .map(([key, country]) =>
+          permit.api.users.update(key, { attributes: { country } }),
+        ),
     );
   } catch (error) {
     console.error("Error fetching location data", error);
