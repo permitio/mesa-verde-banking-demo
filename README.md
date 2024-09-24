@@ -20,7 +20,7 @@ You can experience the demo live at [mesa-verde-banking-demo.railway.app](https:
 
 ## Learn More
 
-To learn more about the authorization models of this application, [Read the Docs](TBD)
+To learn more about the authorization models of this application, [Read the Docs](https://docs.permit.io/modeling/mesa-verde)
 
 For further reading, you can also check the following blogs:
 
