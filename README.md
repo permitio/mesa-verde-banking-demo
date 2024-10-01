@@ -4,7 +4,7 @@ This project showcases an advanced [fine-grained authorization](https://www.perm
 
 The application is written in Next.js and uses Permit.io's Decision Engine to enforce fine-grained authorization policies. The application also uses Stytch for user authentication and JSONBin.io to store external data for location-based authorization.
 
-You can experience the demo live at [mesa-verde-banking-demo.railway.app](https://mesa-verde-banking-demo.railway.app).
+You can experience the demo live at [https://mesa-verde.up.railway.app/](https://mesa-verde.up.railway.app).
 
 ## Authorization Flows
 
