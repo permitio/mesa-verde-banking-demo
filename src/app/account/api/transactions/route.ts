@@ -157,6 +157,8 @@ export async function GET(request: NextRequest) {
     ["Transaction"],
   );
 
+  console.log(transactionInstances);
+
   const transactions = Object.values(transactionInstances)
     .map((transaction: any) => ({
       ...transaction.resource.attributes,
